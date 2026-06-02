@@ -42,6 +42,10 @@ class Launcher {
                 //rime词库
                 copyFileOrDir(context, "rime", "", CustomConstant.RIME_DICT_PATH, true)
                 copyFileOrDir(context, "hw", "", CustomConstant.HW_DICT_PATH, true)
+                // rime-frost 白霜拼音方案
+                copyFileOrDir(context, "rime_frost", "", CustomConstant.RIME_DICT_PATH, true)
+                // 写入 default.custom.yaml，设置 rime_frost 为默认方案
+                writeDefaultCustom()
                 AppPrefs.getInstance().internal.dataDictVersion.setValue(CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM)
             }
             Kernel.resetIme()  // 解决词库复制慢，导致先调用初始化问题
@@ -51,6 +55,36 @@ class Launcher {
             if (isFollowSystemDayNight) {
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
             }
+        }
+    }
+
+    /**
+     * 写入 default.custom.yaml，将 rime_frost 设为默认输入方案。
+     * 保留 YuyanIme 原有方案（T9、手写、笔画等）作为备选。
+     */
+    private fun writeDefaultCustom() {
+        val customYaml = """
+patch:
+  schema_list:
+    - schema: rime_frost
+    - schema: t9_pinyin
+    - schema: pinyin
+    - schema: double_pinyin_natural
+    - schema: double_pinyin_mspy
+    - schema: double_pinyin_sogou
+    - schema: double_pinyin_flypy
+    - schema: double_pinyin_abc
+    - schema: double_pinyin_ziguang
+    - schema: double_pinyin_ls17
+    - schema: stroke
+    - schema: english
+  "menu/page_size": 8
+""".trimIndent()
+        val customFile = java.io.File(CustomConstant.RIME_DICT_PATH, "default.custom.yaml")
+        try {
+            customFile.writeText(customYaml)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
