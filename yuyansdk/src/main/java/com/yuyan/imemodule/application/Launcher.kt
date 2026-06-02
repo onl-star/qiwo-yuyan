@@ -59,16 +59,15 @@ class Launcher {
     }
 
     /**
-     * 写入 default.custom.yaml，将 rime_frost 设为默认输入方案。
-     * 保留 YuyanIme 原有方案（T9、手写、笔画等）作为备选。
+     * 写入 default.custom.yaml，包含所有可用输入方案。
+     * 原 YuyanIme 预编译方案在前（已验证可用），rime-frost 方案在后（需编译词库）。
      */
     private fun writeDefaultCustom() {
         val customYaml = """
 patch:
   schema_list:
-    - schema: rime_frost
-    - schema: t9_pinyin
     - schema: pinyin
+    - schema: t9_pinyin
     - schema: double_pinyin_natural
     - schema: double_pinyin_mspy
     - schema: double_pinyin_sogou
@@ -78,6 +77,9 @@ patch:
     - schema: double_pinyin_ls17
     - schema: stroke
     - schema: english
+    - schema: rime_frost
+    - schema: rime_frost_t9
+    - schema: rime_frost_double_pinyin_flypy
   "menu/page_size": 8
 """.trimIndent()
         val customFile = java.io.File(CustomConstant.RIME_DICT_PATH, "default.custom.yaml")

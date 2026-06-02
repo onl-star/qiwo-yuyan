@@ -59,9 +59,8 @@ object FrostInitializer {
         val customYaml = """
 patch:
   schema_list:
-    - schema: rime_frost
-    - schema: t9_pinyin
     - schema: pinyin
+    - schema: t9_pinyin
     - schema: double_pinyin_natural
     - schema: double_pinyin_mspy
     - schema: double_pinyin_sogou
@@ -71,6 +70,9 @@ patch:
     - schema: double_pinyin_ls17
     - schema: stroke
     - schema: english
+    - schema: rime_frost
+    - schema: rime_frost_t9
+    - schema: rime_frost_double_pinyin_flypy
   "menu/page_size": 8
 """.trimIndent()
         val customFile = File(rimeUserDir, "default.custom.yaml")

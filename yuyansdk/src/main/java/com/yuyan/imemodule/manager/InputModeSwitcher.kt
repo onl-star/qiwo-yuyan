@@ -349,19 +349,29 @@ object InputModeSwitcher {
 
     /**
      * 根据键盘布局选择对应的 Rime 方案。
+     * 默认使用原 YuyanIme 预编译方案（已验证），frost 系列需手动切换。
      */
     private fun getSchemaForMode(inputMode: Int): String {
         val layout = inputMode and MASK_SKB_LAYOUT
         val savedSchema = getInstance().internal.pinyinModeRime.getValue()
         return when (layout) {
-            MASK_SKB_LAYOUT_T9_PINYIN -> CustomConstant.SCHEMA_FROST_T9
+            MASK_SKB_LAYOUT_T9_PINYIN -> {
+                // 如果用户手动选了 frost_t9，使用它；否则用原 t9_pinyin
+                if (savedSchema == CustomConstant.SCHEMA_FROST_T9) savedSchema
+                else CustomConstant.SCHEMA_ZH_T9
+            }
             MASK_SKB_LAYOUT_QWERTY_PINYIN -> {
-                // 如果当前保存的是双拼方案，使用对应的 rime-frost 双拼
-                if (savedSchema.startsWith(CustomConstant.SCHEMA_ZH_DOUBLE_FLYPY)) {
-                    val mode = savedSchema.removePrefix(CustomConstant.SCHEMA_ZH_DOUBLE_FLYPY)
-                    CustomConstant.SCHEMA_FROST_DOUBLE_PREFIX + mode
-                } else {
-                    CustomConstant.SCHEMA_FROST
+                when {
+                    // 双拼方案 → 映射到 frost 双拼或原始双拼
+                    savedSchema.startsWith(CustomConstant.SCHEMA_ZH_DOUBLE_FLYPY) -> {
+                        val mode = savedSchema.removePrefix(CustomConstant.SCHEMA_ZH_DOUBLE_FLYPY)
+                        CustomConstant.SCHEMA_FROST_DOUBLE_PREFIX + mode
+                    }
+                    savedSchema.startsWith(CustomConstant.SCHEMA_FROST_DOUBLE_PREFIX) -> savedSchema
+                    // 用户手动选了 frost 系列
+                    savedSchema == CustomConstant.SCHEMA_FROST -> savedSchema
+                    // 默认使用原 pinyin（预编译，已验证）
+                    else -> CustomConstant.SCHEMA_ZH_QWERTY
                 }
             }
             MASK_SKB_LAYOUT_QWERTY_ABC -> CustomConstant.SCHEMA_EN
