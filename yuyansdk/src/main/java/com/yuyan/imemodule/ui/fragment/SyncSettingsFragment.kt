@@ -6,12 +6,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.preference.Preference
 import androidx.preference.PreferenceScreen
 import com.yuyan.imemodule.application.CustomConstant
-import com.yuyan.imemodule.application.Launcher
 import com.yuyan.imemodule.prefs.AppPrefs
 import com.yuyan.imemodule.sync.SyncEngine
 import com.yuyan.imemodule.sync.SyncMode
 import com.yuyan.imemodule.sync.SyncRequest
+import com.yuyan.imemodule.sync.SyncScheduler
 import com.yuyan.imemodule.ui.fragment.base.ManagedPreferenceFragment
+import com.yuyan.imemodule.view.preference.ManagedPreference
 import com.yuyan.inputmethod.core.Rime
 import kotlinx.coroutines.launch
 import java.io.File
@@ -23,6 +24,22 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
 
     private val syncPrefs = AppPrefs.getInstance().sync
     private val engine = SyncEngine()
+
+    private val onSyncSettingChanged = ManagedPreference.OnChangeListener<Any> { _, _ ->
+        SyncScheduler.applySchedule()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        syncPrefs.autoSyncEnabled.registerOnChangeListener(onSyncSettingChanged)
+        syncPrefs.syncIntervalHours.registerOnChangeListener(onSyncSettingChanged)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        syncPrefs.autoSyncEnabled.unregisterOnChangeListener(onSyncSettingChanged)
+        syncPrefs.syncIntervalHours.unregisterOnChangeListener(onSyncSettingChanged)
+    }
 
     override fun onPreferenceUiCreated(screen: PreferenceScreen) {
         // 立即同步按钮
