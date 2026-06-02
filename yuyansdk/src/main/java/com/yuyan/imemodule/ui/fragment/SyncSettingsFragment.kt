@@ -1,11 +1,15 @@
 package com.yuyan.imemodule.ui.fragment
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
+import androidx.preference.EditTextPreference
 import androidx.preference.Preference
+import androidx.preference.PreferenceManager
 import androidx.preference.PreferenceScreen
 import com.yuyan.imemodule.application.CustomConstant
+import com.yuyan.imemodule.application.Launcher
 import com.yuyan.imemodule.prefs.AppPrefs
 import com.yuyan.imemodule.sync.SyncEngine
 import com.yuyan.imemodule.sync.SyncMode
@@ -24,26 +28,75 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
 
     private val syncPrefs = AppPrefs.getInstance().sync
     private val engine = SyncEngine()
-
-    private val onSyncSettingChanged = ManagedPreference.OnChangeListener<Any> { _, _ ->
-        SyncScheduler.applySchedule()
-    }
+    private val sp: SharedPreferences
+        get() = PreferenceManager.getDefaultSharedPreferences(Launcher.instance.context)
 
     override fun onStart() {
         super.onStart()
-        syncPrefs.autoSyncEnabled.registerOnChangeListener(onSyncSettingChanged)
-        syncPrefs.syncIntervalHours.registerOnChangeListener(onSyncSettingChanged)
+        try {
+            syncPrefs.autoSyncEnabled.registerOnChangeListener(autoSyncListener)
+            syncPrefs.syncIntervalHours.registerOnChangeListener(intervalListener)
+        } catch (_: Exception) {}
     }
 
     override fun onStop() {
         super.onStop()
-        syncPrefs.autoSyncEnabled.unregisterOnChangeListener(onSyncSettingChanged)
-        syncPrefs.syncIntervalHours.unregisterOnChangeListener(onSyncSettingChanged)
+        try {
+            syncPrefs.autoSyncEnabled.unregisterOnChangeListener(autoSyncListener)
+            syncPrefs.syncIntervalHours.unregisterOnChangeListener(intervalListener)
+        } catch (_: Exception) {}
     }
 
     override fun onPreferenceUiCreated(screen: PreferenceScreen) {
+        val ctx = screen.context
+
+        // WebDAV 地址
+        val urlPref = EditTextPreference(ctx).apply {
+            key = "sync_webdav_url"
+            title = getString(com.yuyan.imemodule.R.string.webdav_url)
+            summary = getString(com.yuyan.imemodule.R.string.webdav_url_summary)
+            setDefaultValue("")
+            setOnPreferenceChangeListener { _, newValue ->
+                syncPrefs.webdavUrl = newValue as String
+                SyncScheduler.applySchedule()
+                true
+            }
+        }
+        // 加载当前值
+        urlPref.text = syncPrefs.webdavUrl
+        urlPref.summary = syncPrefs.webdavUrl.ifBlank {
+            getString(com.yuyan.imemodule.R.string.webdav_url_summary)
+        }
+        screen.addPreference(urlPref)
+
+        // 用户名
+        val userPref = EditTextPreference(ctx).apply {
+            key = "sync_webdav_username"
+            title = getString(com.yuyan.imemodule.R.string.webdav_username)
+            setDefaultValue("")
+            setOnPreferenceChangeListener { _, newValue ->
+                syncPrefs.webdavUsername = newValue as String
+                true
+            }
+        }
+        userPref.text = syncPrefs.webdavUsername
+        screen.addPreference(userPref)
+
+        // 密码
+        val passPref = EditTextPreference(ctx).apply {
+            key = "sync_webdav_password"
+            title = getString(com.yuyan.imemodule.R.string.webdav_password)
+            setDefaultValue("")
+            setOnPreferenceChangeListener { _, newValue ->
+                syncPrefs.webdavPassword = newValue as String
+                true
+            }
+        }
+        passPref.text = syncPrefs.webdavPassword
+        screen.addPreference(passPref)
+
         // 立即同步按钮
-        val syncNowPref = Preference(screen.context).apply {
+        val syncNowPref = Preference(ctx).apply {
             key = "sync_now"
             title = getString(com.yuyan.imemodule.R.string.sync_now)
             summary = getString(com.yuyan.imemodule.R.string.sync_now_summary)
@@ -55,7 +108,7 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
         screen.addPreference(syncNowPref)
 
         // 推送到远端按钮
-        val pushPref = Preference(screen.context).apply {
+        val pushPref = Preference(ctx).apply {
             key = "sync_push"
             title = getString(com.yuyan.imemodule.R.string.sync_push)
             setOnPreferenceClickListener {
@@ -66,7 +119,7 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
         screen.addPreference(pushPref)
 
         // 从远端拉取按钮
-        val pullPref = Preference(screen.context).apply {
+        val pullPref = Preference(ctx).apply {
             key = "sync_pull"
             title = getString(com.yuyan.imemodule.R.string.sync_pull)
             setOnPreferenceClickListener {
@@ -131,6 +184,15 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
                 Rime.destroy()
                 Rime.getInstance(true)
             }
+        }
+    }
+
+    companion object {
+        private val autoSyncListener = ManagedPreference.OnChangeListener<Boolean> { _, _ ->
+            SyncScheduler.applySchedule()
+        }
+        private val intervalListener = ManagedPreference.OnChangeListener<Int> { _, _ ->
+            SyncScheduler.applySchedule()
         }
     }
 }
