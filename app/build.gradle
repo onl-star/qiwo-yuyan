@@ -76,12 +76,15 @@ android {
             shrinkResources true
             applicationIdSuffix  ".release"
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard.cfg'
-            signingConfig signingConfigs.release
+            // 签名仅在 keystore 配置完成时启用
+            if (signingConfigs.release.storeFile != null) {
+                signingConfig signingConfigs.release
+            }
         }
 
         debug {
             applicationIdSuffix ".debug"
-            signingConfig signingConfigs.release
+            // debug 默认使用 Android 调试签名，不强制引用 release key
         }
 
     }
