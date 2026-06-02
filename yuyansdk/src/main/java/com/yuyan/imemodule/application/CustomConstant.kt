@@ -15,7 +15,9 @@ object CustomConstant {
     const val SCHEMA_ZH_DOUBLE_FLYPY = "double_pinyin_" // 小鹤双拼
     const val SCHEMA_ZH_DOUBLE_LX17 = "double_pinyin_ls17" // 乱序17双拼
     const val SCHEMA_ZH_STROKE = "stroke" // 五笔画
-    const val SCHEMA_FROST = "rime_frost" // 白霜拼音（Qiwo 默认方案）
+    const val SCHEMA_FROST = "rime_frost" // 白霜拼音全拼（Qiwo 默认方案）
+    const val SCHEMA_FROST_T9 = "rime_frost_t9" // 白霜拼音九键
+    const val SCHEMA_FROST_DOUBLE_PREFIX = "rime_frost_double_pinyin_" // 白霜拼音双拼前缀
     const val CURRENT_RIME_DICT_DATA_VERSIOM = 20260325
     const val YUYAN_IME_REPO = "https://github.com/gurecn/YuyanIme"
     const val QIWO_IME_REPO = "https://github.com/LeaWron/qiwo-yuyan"

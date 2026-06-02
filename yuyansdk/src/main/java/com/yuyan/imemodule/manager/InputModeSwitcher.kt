@@ -334,15 +334,41 @@ object InputModeSwitcher {
         if (isEnglish) {
             Kernel.initImeSchema(CustomConstant.SCHEMA_EN)
         } else {
-            Kernel.initImeSchema(getInstance().internal.pinyinModeRime.getValue())
+            Kernel.initImeSchema(getSchemaForMode(mInputMode))
         }
         if (isChinese || isEnglish) {
             mRecentLauageInputMode = mInputMode
             getInstance().internal.inputDefaultMode.setValue(mInputMode)
         }
         mToggleStates.modifiers = when(Kernel.getCurrentRimeSchema()) {
-            CustomConstant.SCHEMA_ZH_T9, CustomConstant.SCHEMA_ZH_STROKE, CustomConstant.SCHEMA_ZH_DOUBLE_LX17 -> KeyEvent.META_CAPS_LOCK_ON
+            CustomConstant.SCHEMA_ZH_T9, CustomConstant.SCHEMA_FROST_T9,
+            CustomConstant.SCHEMA_ZH_STROKE, CustomConstant.SCHEMA_ZH_DOUBLE_LX17 -> KeyEvent.META_CAPS_LOCK_ON
             else -> MASK_CASE_LOWER
+        }
+    }
+
+    /**
+     * 根据键盘布局选择对应的 Rime 方案。
+     */
+    private fun getSchemaForMode(inputMode: Int): String {
+        val layout = inputMode and MASK_SKB_LAYOUT
+        val savedSchema = getInstance().internal.pinyinModeRime.getValue()
+        return when (layout) {
+            MASK_SKB_LAYOUT_T9_PINYIN -> CustomConstant.SCHEMA_FROST_T9
+            MASK_SKB_LAYOUT_QWERTY_PINYIN -> {
+                // 如果当前保存的是双拼方案，使用对应的 rime-frost 双拼
+                if (savedSchema.startsWith(CustomConstant.SCHEMA_ZH_DOUBLE_FLYPY)) {
+                    val mode = savedSchema.removePrefix(CustomConstant.SCHEMA_ZH_DOUBLE_FLYPY)
+                    CustomConstant.SCHEMA_FROST_DOUBLE_PREFIX + mode
+                } else {
+                    CustomConstant.SCHEMA_FROST
+                }
+            }
+            MASK_SKB_LAYOUT_QWERTY_ABC -> CustomConstant.SCHEMA_EN
+            MASK_SKB_LAYOUT_LX17 -> CustomConstant.SCHEMA_ZH_DOUBLE_LX17
+            MASK_SKB_LAYOUT_STROKE -> CustomConstant.SCHEMA_ZH_STROKE
+            MASK_SKB_LAYOUT_HANDWRITING -> CustomConstant.SCHEMA_ZH_HANDWRITING
+            else -> savedSchema
         }
     }
 
