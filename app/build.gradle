@@ -46,14 +46,16 @@ android {
             def keystorePassword = System.getenv("RELEASE_STORE_PASSWORD") ?: keystoreProperties.getProperty('storePassword')
             def keyAliasName = System.getenv("RELEASE_KEY_ALIAS") ?: keystoreProperties.getProperty('keyAlias')
             def keyPasswordValue = System.getenv("RELEASE_KEY_PASSWORD") ?: keystoreProperties.getProperty('keyPassword')
-            def keystoreFile = rootProject.file(keystoreFilePath)
-            if (keystoreFile.exists() && keystorePassword && keyAliasName && keyPasswordValue) {
-                storeFile keystoreFile
-                storePassword keystorePassword
-                keyAlias keyAliasName
-                keyPassword keyPasswordValue
-                v1SigningEnabled true
-                v2SigningEnabled true
+            if (keystoreFilePath != null && keystorePassword && keyAliasName && keyPasswordValue) {
+                def keystoreFile = rootProject.file(keystoreFilePath)
+                if (keystoreFile.exists()) {
+                    storeFile keystoreFile
+                    storePassword keystorePassword
+                    keyAlias keyAliasName
+                    keyPassword keyPasswordValue
+                    v1SigningEnabled true
+                    v2SigningEnabled true
+                }
             }
         }
     }
