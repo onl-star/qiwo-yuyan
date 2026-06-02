@@ -33,7 +33,7 @@ jobs:
         run: ./gradlew assembleOfflineDebug
 
       - name: Upload Debug APK
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: qiwo-debug-apk
           path: app/build/outputs/apk/offline/debug/*.apk
