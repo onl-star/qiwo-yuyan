@@ -24,11 +24,13 @@ class SyncWorker(
 
     override suspend fun doWork(): Result {
         val prefs = AppPrefs.getInstance().sync
-        val url: String = prefs.webdavUrl
+        val serverUrl: String = prefs.webdavUrl.trimEnd('/')
+        val folder: String = prefs.syncFolder.trim('/')
         val username: String = prefs.webdavUsername
         val password: String = prefs.webdavPassword
+        val device: String = prefs.deviceName
 
-        if (url.isBlank()) {
+        if (serverUrl.isBlank()) {
             Log.d(TAG, "WebDAV URL not configured, skipping sync")
             return Result.success()
         }
@@ -39,12 +41,13 @@ class SyncWorker(
             return Result.success()
         }
 
-        Log.i(TAG, "Starting background sync to $url")
+        val fullUrl = "$serverUrl/$folder"
+        Log.i(TAG, "Starting background sync to $fullUrl")
 
         val request = SyncRequest(
-            deviceId = getDeviceId(),
+            deviceId = device,
             rimeUserDir = File(CustomConstant.RIME_DICT_PATH),
-            remoteUrl = url,
+            remoteUrl = fullUrl,
             username = username.ifBlank { null },
             password = password.ifBlank { null },
             mode = SyncMode.Sync,

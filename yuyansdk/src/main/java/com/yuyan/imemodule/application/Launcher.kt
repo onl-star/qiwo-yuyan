@@ -42,9 +42,9 @@ class Launcher {
                 //rime词库
                 copyFileOrDir(context, "rime", "", CustomConstant.RIME_DICT_PATH, true)
                 copyFileOrDir(context, "hw", "", CustomConstant.HW_DICT_PATH, true)
-                // rime-frost 白霜拼音方案
-                copyFileOrDir(context, "rime_frost", "", CustomConstant.RIME_DICT_PATH, true)
-                // 写入 default.custom.yaml，设置 rime_frost 为默认方案
+                // rime-frost 白霜拼音方案（不覆盖已有文件，保护原预编译方案）
+                copyFileOrDir(context, "rime_frost", "", CustomConstant.RIME_DICT_PATH, false)
+                // 写入 default.custom.yaml（仅在首次部署时）
                 writeDefaultCustom()
                 AppPrefs.getInstance().internal.dataDictVersion.setValue(CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM)
             }

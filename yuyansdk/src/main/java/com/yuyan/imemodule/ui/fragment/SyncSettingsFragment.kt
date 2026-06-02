@@ -95,6 +95,37 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
         passPref.text = syncPrefs.webdavPassword
         screen.addPreference(passPref)
 
+        // 同步目录
+        val folderPref = EditTextPreference(ctx).apply {
+            key = "sync_folder"
+            title = getString(com.yuyan.imemodule.R.string.sync_folder)
+            summary = getString(com.yuyan.imemodule.R.string.sync_folder_summary)
+            setDefaultValue("qiwo-rime-sync")
+            setOnPreferenceChangeListener { _, newValue ->
+                syncPrefs.syncFolder = newValue as String
+                SyncScheduler.applySchedule()
+                true
+            }
+        }
+        folderPref.text = syncPrefs.syncFolder
+        folderPref.summary = syncPrefs.syncFolder
+        screen.addPreference(folderPref)
+
+        // 设备名称
+        val devicePref = EditTextPreference(ctx).apply {
+            key = "sync_device_name"
+            title = getString(com.yuyan.imemodule.R.string.device_name)
+            summary = getString(com.yuyan.imemodule.R.string.device_name_summary)
+            setDefaultValue(syncPrefs.deviceName)
+            setOnPreferenceChangeListener { _, newValue ->
+                syncPrefs.deviceName = newValue as String
+                true
+            }
+        }
+        devicePref.text = syncPrefs.deviceName
+        devicePref.summary = syncPrefs.deviceName
+        screen.addPreference(devicePref)
+
         // 立即同步按钮
         val syncNowPref = Preference(ctx).apply {
             key = "sync_now"
@@ -131,11 +162,13 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
     }
 
     private fun performSync(mode: SyncMode) {
-        val url: String = syncPrefs.webdavUrl
+        val serverUrl: String = syncPrefs.webdavUrl.trimEnd('/')
+        val folder: String = syncPrefs.syncFolder.trim('/')
         val username: String = syncPrefs.webdavUsername
         val password: String = syncPrefs.webdavPassword
+        val device: String = syncPrefs.deviceName
 
-        if (url.isBlank()) {
+        if (serverUrl.isBlank()) {
             Toast.makeText(
                 requireContext(),
                 getString(com.yuyan.imemodule.R.string.sync_no_config),
@@ -144,6 +177,8 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
             return
         }
 
+        val fullUrl = "$serverUrl/$folder"
+
         Toast.makeText(
             requireContext(),
             getString(com.yuyan.imemodule.R.string.sync_in_progress),
@@ -151,14 +186,10 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
         ).show()
 
         lifecycleScope.launch {
-            val deviceId: String = android.provider.Settings.Secure.getString(
-                requireContext().contentResolver,
-                android.provider.Settings.Secure.ANDROID_ID
-            ) ?: "unknown-android"
             val request = SyncRequest(
-                deviceId = deviceId,
+                deviceId = device,
                 rimeUserDir = File(CustomConstant.RIME_DICT_PATH),
-                remoteUrl = url,
+                remoteUrl = fullUrl,
                 username = username.ifBlank { null },
                 password = password.ifBlank { null },
                 mode = mode,

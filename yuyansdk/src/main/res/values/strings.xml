@@ -225,10 +225,14 @@
 
     <!-- WebDAV 同步设置 -->
     <string name="sync_settings">同步设置</string>
-    <string name="webdav_url">WebDAV 地址</string>
-    <string name="webdav_url_summary">例如 https://example.com/remote.php/dav/files/user/qiwo-rime-sync</string>
+    <string name="webdav_url">WebDAV 服务器地址</string>
+    <string name="webdav_url_summary">例如 https://example.com/remote.php/dav/files/user</string>
     <string name="webdav_username">用户名</string>
     <string name="webdav_password">密码</string>
+    <string name="sync_folder">同步目录</string>
+    <string name="sync_folder_summary">WebDAV 服务器上的同步文件夹名称</string>
+    <string name="device_name">设备名称</string>
+    <string name="device_name_summary">用于区分多台设备的同步来源</string>
     <string name="auto_sync">自动同步</string>
     <string name="auto_sync_summary">定时在后台同步配置和词库</string>
     <string name="sync_interval">同步间隔</string>

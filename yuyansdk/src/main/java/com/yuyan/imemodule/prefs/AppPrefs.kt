@@ -209,7 +209,7 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
     }
 
     inner class Sync : ManagedPreferenceCategory(R.string.sync_settings, sharedPreferences) {
-        // WebDAV 配置字符串 — 直接用 SharedPreferences 读写以避免泛型推断问题
+        // WebDAV 配置 — 直接用 SharedPreferences 读写以避免泛型推断问题
         var webdavUrl: String
             get() = sharedPreferences.getString("sync_webdav_url", "") ?: ""
             set(value) { sharedPreferences.edit { putString("sync_webdav_url", value) } }
@@ -219,6 +219,18 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         var webdavPassword: String
             get() = sharedPreferences.getString("sync_webdav_password", "") ?: ""
             set(value) { sharedPreferences.edit { putString("sync_webdav_password", value) } }
+        var syncFolder: String
+            get() = sharedPreferences.getString("sync_folder", "qiwo-rime-sync") ?: "qiwo-rime-sync"
+            set(value) { sharedPreferences.edit { putString("sync_folder", value) } }
+        var deviceName: String
+            get() {
+                val saved = sharedPreferences.getString("sync_device_name", "")
+                if (!saved.isNullOrBlank()) return saved
+                // 默认设备名：android-{型号}
+                return "android-" + (android.os.Build.MODEL ?: "unknown")
+                    .replace(" ", "-").lowercase()
+            }
+            set(value) { sharedPreferences.edit { putString("sync_device_name", value) } }
 
         val autoSyncEnabled = switch(R.string.auto_sync, "sync_auto_enabled", false)
         val syncIntervalHours = int(
