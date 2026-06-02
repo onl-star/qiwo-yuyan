@@ -8,4 +8,7 @@
     <color name="x_recycler_color_loading_color1">#55777777</color>
     <color name="x_recycler_color_loading_color2">#B1777777</color>
     <color name="x_recycler_color_loading_color3">#FF777777</color>
+
+    <!-- Qiwo 品牌色：深靛蓝 -->
+    <color name="qiwo_icon_background">#1A237E</color>
 </resources>

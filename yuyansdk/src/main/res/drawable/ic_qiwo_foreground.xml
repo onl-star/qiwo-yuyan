@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 齐我输入法图标前景：简化的 "齐" 字造型 -->
+    <!-- 上部横线 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,34 L80,34 L80,40 L28,40 Z" />
+    <!-- 左竖 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,34 L54,34 L54,54 L60,54 L60,80 L48,80 Z" />
+    <!-- 右竖 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,48 L66,48 L66,80 L54,80 L54,54 L60,54 Z" />
+    <!-- 底部横线 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,74 L72,74 L72,80 L36,80 Z" />
+</vector>
