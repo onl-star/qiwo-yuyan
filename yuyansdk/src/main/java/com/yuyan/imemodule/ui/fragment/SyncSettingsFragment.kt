@@ -36,7 +36,7 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
         super.onStart()
         try {
             syncPrefs.autoSyncEnabled.registerOnChangeListener(autoSyncListener)
-            syncPrefs.syncIntervalHours.registerOnChangeListener(intervalListener)
+            syncPrefs.syncIntervalMinutes.registerOnChangeListener(intervalListener)
         } catch (_: Exception) {}
     }
 
@@ -44,7 +44,7 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
         super.onStop()
         try {
             syncPrefs.autoSyncEnabled.unregisterOnChangeListener(autoSyncListener)
-            syncPrefs.syncIntervalHours.unregisterOnChangeListener(intervalListener)
+            syncPrefs.syncIntervalMinutes.unregisterOnChangeListener(intervalListener)
         } catch (_: Exception) {}
     }
 

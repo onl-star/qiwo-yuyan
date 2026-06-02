@@ -55,7 +55,7 @@ class SyncWorker(
             remoteUrl = fullUrl,
             username = username.ifBlank { null },
             password = password.ifBlank { null },
-            mode = SyncMode.Sync,
+            mode = SyncMode.SyncUserDict,
             dryRun = false
         )
 

@@ -29,7 +29,7 @@ object SyncScheduler {
         val url = prefs.webdavUrl
 
         if (enabled && url.isNotBlank()) {
-            schedule(prefs.syncIntervalHours.getValue())
+            schedule(prefs.syncIntervalMinutes.getValue())
         } else {
             cancel()
         }
@@ -39,12 +39,12 @@ object SyncScheduler {
      * 启动定时同步。
      * @param intervalHours 同步间隔（小时），最小 1 小时（WorkManager 限制）。
      */
-    fun schedule(intervalHours: Int) {
+    fun schedule(intervalMinutes: Int) {
         val context = Launcher.instance.context
         val workManager = WorkManager.getInstance(context)
 
-        // WorkManager 最小间隔为 15 分钟，我们使用 1 小时下限以保证电池友好
-        val interval = intervalHours.coerceAtLeast(1).toLong()
+        // WorkManager 最小间隔为 15 分钟
+        val interval = intervalMinutes.coerceAtLeast(15).toLong()
 
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -52,8 +52,8 @@ object SyncScheduler {
             .build()
 
         val workRequest = PeriodicWorkRequestBuilder<SyncWorker>(
-            interval, TimeUnit.HOURS,
-            15, TimeUnit.MINUTES  // flex interval
+            interval, TimeUnit.MINUTES,
+            5, TimeUnit.MINUTES  // flex interval
         )
             .setConstraints(constraints)
             .addTag(WORK_NAME)
@@ -61,11 +61,11 @@ object SyncScheduler {
 
         workManager.enqueueUniquePeriodicWork(
             WORK_NAME,
-            ExistingPeriodicWorkPolicy.UPDATE,  // 更新现有策略
+            ExistingPeriodicWorkPolicy.UPDATE,
             workRequest
         )
 
-        Log.i(TAG, "Scheduled WebDAV sync every $interval hours")
+        Log.i(TAG, "Scheduled WebDAV sync every $interval minutes")
     }
 
     /**

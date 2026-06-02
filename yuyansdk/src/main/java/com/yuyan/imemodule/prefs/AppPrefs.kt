@@ -233,13 +233,13 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             set(value) { sharedPreferences.edit { putString("sync_device_name", value) } }
 
         val autoSyncEnabled = switch(R.string.auto_sync, "sync_auto_enabled", false)
-        val syncIntervalHours = int(
+        val syncIntervalMinutes = int(
             R.string.sync_interval,
-            "sync_interval_hours",
-            24,
-            1,
-            168,
-            "小时"
+            "sync_interval_minutes",
+            60,
+            15,
+            10080,
+            "分钟"
         ) { autoSyncEnabled.getValue() }
     }
 
