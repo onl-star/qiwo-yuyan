@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.yuyan.imemodule.application.CustomConstant
-import com.yuyan.imemodule.application.Launcher
 import com.yuyan.imemodule.prefs.AppPrefs
 import com.yuyan.inputmethod.core.Rime
 import java.io.File
@@ -25,16 +24,17 @@ class SyncWorker(
 
     override suspend fun doWork(): Result {
         val prefs = AppPrefs.getInstance().sync
-        val url = prefs.webdavUrl.getValue()
-        val username = prefs.webdavUsername.getValue()
-        val password = prefs.webdavPassword.getValue()
+        val url: String = prefs.webdavUrl.getValue()
+        val username: String = prefs.webdavUsername.getValue()
+        val password: String = prefs.webdavPassword.getValue()
 
         if (url.isBlank()) {
             Log.d(TAG, "WebDAV URL not configured, skipping sync")
             return Result.success()
         }
 
-        if (!prefs.autoSyncEnabled.getValue()) {
+        val autoSyncEnabled: Boolean = prefs.autoSyncEnabled.getValue()
+        if (!autoSyncEnabled) {
             Log.d(TAG, "Auto-sync disabled, skipping")
             return Result.success()
         }

@@ -91,7 +91,7 @@ object SyncScheduler {
 
         val workRequest = androidx.work.OneTimeWorkRequestBuilder<SyncWorker>()
             .setConstraints(constraints)
-            .addTag("$WORK_NAME_oneshot")
+            .addTag("${WORK_NAME}_oneshot")
             .build()
 
         workManager.enqueue(workRequest)

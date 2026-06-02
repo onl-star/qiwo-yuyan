@@ -78,9 +78,9 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
     }
 
     private fun performSync(mode: SyncMode) {
-        val url = syncPrefs.webdavUrl.getValue()
-        val username = syncPrefs.webdavUsername.getValue()
-        val password = syncPrefs.webdavPassword.getValue()
+        val url: String = syncPrefs.webdavUrl.getValue()
+        val username: String = syncPrefs.webdavUsername.getValue()
+        val password: String = syncPrefs.webdavPassword.getValue()
 
         if (url.isBlank()) {
             Toast.makeText(
@@ -98,11 +98,12 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
         ).show()
 
         lifecycleScope.launch {
+            val deviceId: String = android.provider.Settings.Secure.getString(
+                requireContext().contentResolver,
+                android.provider.Settings.Secure.ANDROID_ID
+            ) ?: "unknown-android"
             val request = SyncRequest(
-                deviceId = android.provider.Settings.Secure.getString(
-                    requireContext().contentResolver,
-                    android.provider.Settings.Secure.ANDROID_ID
-                ) ?: "unknown-android",
+                deviceId = deviceId,
                 rimeUserDir = File(CustomConstant.RIME_DICT_PATH),
                 remoteUrl = url,
                 username = username.ifBlank { null },
