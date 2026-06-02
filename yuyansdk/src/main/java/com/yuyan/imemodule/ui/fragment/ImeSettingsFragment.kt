@@ -83,6 +83,11 @@ class ImeSettingsFragment : PreferenceFragmentCompat() {
             addCategory(R.string.advanced) {
                 isIconSpaceReserved = false
                 addDestinationPreference(
+                    R.string.sync_settings,
+                    R.drawable.ic_menu_dark,
+                    R.id.action_settingsFragment_to_syncSettingsFragment
+                )
+                addDestinationPreference(
                     R.string.setting_ime_other,
                     R.drawable.ic_menu_more_horiz,
                     R.id.action_settingsFragment_to_otherSettingsFragment

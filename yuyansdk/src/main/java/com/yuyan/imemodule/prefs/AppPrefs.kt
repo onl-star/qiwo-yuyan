@@ -208,6 +208,21 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         val imeHideIcon = switch(R.string.ime_hide_icon, "ime_hide_icon_enable", false, R.string.ime_hide_icon_tips)
     }
 
+    inner class Sync : ManagedPreferenceCategory(R.string.sync_settings, sharedPreferences) {
+        val webdavUrl = string("sync_webdav_url", "") // WebDAV 地址
+        val webdavUsername = string("sync_webdav_username", "") // 用户名
+        val webdavPassword = string("sync_webdav_password", "") // 密码
+        val autoSyncEnabled = switch(R.string.auto_sync, "sync_auto_enabled", false) // 自动同步开关
+        val syncIntervalHours = int(
+            R.string.sync_interval,
+            "sync_interval_hours",
+            24, // 默认每天
+            1,
+            168, // 最大每周
+            "小时"
+        ) { autoSyncEnabled.getValue() }
+    }
+
     inner class Handwriting : ManagedPreferenceCategory(R.string.setting_ime_input, sharedPreferences) {
 
 
@@ -299,6 +314,7 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
     val clipboard = Clipboard().register()
     val keyboardSetting = KeyboardSetting().register()
     val other = Other().register()
+    val sync = Sync().register()
 
     private val onSharedPreferenceChangeListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -332,6 +348,9 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
                 it.value.putValueTo(this@edit)
             }
             other.managedPreferences.forEach {
+                it.value.putValueTo(this@edit)
+            }
+            sync.managedPreferences.forEach {
                 it.value.putValueTo(this@edit)
             }
         }

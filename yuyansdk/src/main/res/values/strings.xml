@@ -222,4 +222,22 @@
     <string name="keyboard_style_mod_yuyan">默认</string>
     <string name="keyboard_style_mod_google">谷歌</string>
     <string name="keyboard_style_mod_samsung">三星</string>
+
+    <!-- WebDAV 同步设置 -->
+    <string name="sync_settings">同步设置</string>
+    <string name="webdav_url">WebDAV 地址</string>
+    <string name="webdav_url_summary">例如 https://example.com/remote.php/dav/files/user/qiwo-rime-sync</string>
+    <string name="webdav_username">用户名</string>
+    <string name="webdav_password">密码</string>
+    <string name="auto_sync">自动同步</string>
+    <string name="auto_sync_summary">定时在后台同步配置和词库</string>
+    <string name="sync_interval">同步间隔</string>
+    <string name="sync_now">立即同步</string>
+    <string name="sync_now_summary">手动执行一次同步</string>
+    <string name="sync_push">推送到远端</string>
+    <string name="sync_pull">从远端拉取</string>
+    <string name="sync_in_progress">同步中…</string>
+    <string name="sync_success">同步完成</string>
+    <string name="sync_failed">同步失败</string>
+    <string name="sync_no_config">请先配置 WebDAV 地址和凭据</string>
 </resources>

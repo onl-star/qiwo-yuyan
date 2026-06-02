@@ -46,6 +46,9 @@
         <action
             android:id="@+id/action_settingsFragment_to_privacyPolicyFragment"
             app:destination="@id/privacyPolicyFragment" />
+        <action
+            android:id="@+id/action_settingsFragment_to_syncSettingsFragment"
+            app:destination="@id/syncSettingsFragment" />
     </fragment>
     <fragment
         android:id="@+id/sidebarSymbolFragment"
@@ -99,6 +102,10 @@
         android:id="@+id/otherSettingsFragment"
         android:name="com.yuyan.imemodule.ui.fragment.OtherSettingsFragment"
         android:label="@string/setting_ime_other" />
+    <fragment
+        android:id="@+id/syncSettingsFragment"
+        android:name="com.yuyan.imemodule.ui.fragment.SyncSettingsFragment"
+        android:label="@string/sync_settings" />
     <activity
         android:id="@+id/setupActivity"
         android:name="com.yuyan.imemodule.ui.setup.SetupActivity"
