@@ -30,13 +30,13 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleOfflineDebug
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v5
         with:
           name: qiwo-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/offline/debug/*.apk
           retention-days: 7
 
   build-release:
