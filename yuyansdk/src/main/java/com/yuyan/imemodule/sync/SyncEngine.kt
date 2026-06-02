@@ -67,14 +67,20 @@ class SyncEngine {
         }
 
         val webDav = WebDavClient(request.remoteUrl, request.username, request.password)
+        val messages = mutableListOf<String>()
         if (!request.dryRun) {
-            webDav.ensureRootAsync()
+            val rootOk = webDav.ensureRootAsync()
+            if (!rootOk) {
+                return SyncSummary(
+                    mode = SyncMode.Push,
+                    deviceId = request.deviceId,
+                    errors = listOf("Failed to create sync directory on server. Check URL and permissions.")
+                )
+            }
         }
 
         val localFiles = scanLocalFiles(request.rimeUserDir)
-        val messages = mutableListOf<String>()
         var uploaded = 0
-
         var failed = 0
         for ((path, entry) in localFiles.entries.sortedBy { it.key }) {
             if (!request.dryRun) {

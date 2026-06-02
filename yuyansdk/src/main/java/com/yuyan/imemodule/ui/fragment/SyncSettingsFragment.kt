@@ -198,12 +198,10 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
 
             val summary = engine.execute(request)
 
-            val message = if (summary.hasErrors) {
-                summary.errors.first()
-            } else if (summary.totalFiles > 0 || summary.messages.isNotEmpty()) {
-                summary.messages.firstOrNull() ?: getString(com.yuyan.imemodule.R.string.sync_success)
-            } else {
-                getString(com.yuyan.imemodule.R.string.sync_success)
+            val message = when {
+                summary.hasErrors -> summary.errors.joinToString("\n")
+                summary.messages.isNotEmpty() -> summary.messages.joinToString("\n")
+                else -> getString(com.yuyan.imemodule.R.string.sync_success)
             }
 
             requireActivity().runOnUiThread {
