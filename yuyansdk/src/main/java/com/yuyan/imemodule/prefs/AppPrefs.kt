@@ -209,16 +209,24 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
     }
 
     inner class Sync : ManagedPreferenceCategory(R.string.sync_settings, sharedPreferences) {
-        val webdavUrl = ManagedPreference.PString(sharedPreferences, "sync_webdav_url", "").apply { register() }
-        val webdavUsername = ManagedPreference.PString(sharedPreferences, "sync_webdav_username", "").apply { register() }
-        val webdavPassword = ManagedPreference.PString(sharedPreferences, "sync_webdav_password", "").apply { register() }
-        val autoSyncEnabled = switch(R.string.auto_sync, "sync_auto_enabled", false) // 自动同步开关
+        // WebDAV 配置字符串 — 直接用 SharedPreferences 读写以避免泛型推断问题
+        var webdavUrl: String
+            get() = sharedPreferences.getString("sync_webdav_url", "") ?: ""
+            set(value) { sharedPreferences.edit { putString("sync_webdav_url", value) } }
+        var webdavUsername: String
+            get() = sharedPreferences.getString("sync_webdav_username", "") ?: ""
+            set(value) { sharedPreferences.edit { putString("sync_webdav_username", value) } }
+        var webdavPassword: String
+            get() = sharedPreferences.getString("sync_webdav_password", "") ?: ""
+            set(value) { sharedPreferences.edit { putString("sync_webdav_password", value) } }
+
+        val autoSyncEnabled = switch(R.string.auto_sync, "sync_auto_enabled", false)
         val syncIntervalHours = int(
             R.string.sync_interval,
             "sync_interval_hours",
-            24, // 默认每天
+            24,
             1,
-            168, // 最大每周
+            168,
             "小时"
         ) { autoSyncEnabled.getValue() }
     }

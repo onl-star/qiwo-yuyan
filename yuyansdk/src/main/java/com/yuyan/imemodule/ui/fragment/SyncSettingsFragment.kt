@@ -78,9 +78,9 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
     }
 
     private fun performSync(mode: SyncMode) {
-        val url: String = syncPrefs.webdavUrl.getValue()
-        val username: String = syncPrefs.webdavUsername.getValue()
-        val password: String = syncPrefs.webdavPassword.getValue()
+        val url: String = syncPrefs.webdavUrl
+        val username: String = syncPrefs.webdavUsername
+        val password: String = syncPrefs.webdavPassword
 
         if (url.isBlank()) {
             Toast.makeText(

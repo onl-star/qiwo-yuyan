@@ -26,7 +26,7 @@ object SyncScheduler {
     fun applySchedule() {
         val prefs = AppPrefs.getInstance().sync
         val enabled = prefs.autoSyncEnabled.getValue()
-        val url = prefs.webdavUrl.getValue()
+        val url = prefs.webdavUrl
 
         if (enabled && url.isNotBlank()) {
             schedule(prefs.syncIntervalHours.getValue())

@@ -24,9 +24,9 @@ class SyncWorker(
 
     override suspend fun doWork(): Result {
         val prefs = AppPrefs.getInstance().sync
-        val url: String = prefs.webdavUrl.getValue()
-        val username: String = prefs.webdavUsername.getValue()
-        val password: String = prefs.webdavPassword.getValue()
+        val url: String = prefs.webdavUrl
+        val username: String = prefs.webdavUsername
+        val password: String = prefs.webdavPassword
 
         if (url.isBlank()) {
             Log.d(TAG, "WebDAV URL not configured, skipping sync")
