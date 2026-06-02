@@ -209,9 +209,9 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
     }
 
     inner class Sync : ManagedPreferenceCategory(R.string.sync_settings, sharedPreferences) {
-        val webdavUrl = string("sync_webdav_url", "") // WebDAV 地址
-        val webdavUsername = string("sync_webdav_username", "") // 用户名
-        val webdavPassword = string("sync_webdav_password", "") // 密码
+        val webdavUrl = ManagedPreference.PString(sharedPreferences, "sync_webdav_url", "").apply { register() }
+        val webdavUsername = ManagedPreference.PString(sharedPreferences, "sync_webdav_username", "").apply { register() }
+        val webdavPassword = ManagedPreference.PString(sharedPreferences, "sync_webdav_password", "").apply { register() }
         val autoSyncEnabled = switch(R.string.auto_sync, "sync_auto_enabled", false) // 自动同步开关
         val syncIntervalHours = int(
             R.string.sync_interval,

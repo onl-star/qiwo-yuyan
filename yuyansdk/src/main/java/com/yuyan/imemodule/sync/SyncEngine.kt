@@ -300,10 +300,8 @@ class SyncEngine {
             val relativePath = file.relativeTo(baseDir).path.replace('\\', '/')
 
             if (file.isDirectory) {
-                // 检查目录是否应该同步
+                // 检查排除模式，跳过不需要同步的目录
                 val dirPath = "$relativePath/"
-                if (relativePath in FileSelector) continue  // 仅比较顶级目录
-                // 检查排除模式
                 if (dirPath.startsWith("build/") || dirPath.startsWith(".userdb/")) continue
                 scanDir(baseDir, file, result)
             } else {
@@ -374,13 +372,13 @@ class SyncEngine {
         val timestamp = java.time.LocalDateTime.now()
             .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
         val backupName = "${src.name}.$timestamp.bak"
-        val dst = File(backupDir, if (relativePath.contains('/')) {
+        val dst: File = if (relativePath.contains('/')) {
             val sub = File(backupDir, relativePath.substringBeforeLast('/'))
             sub.mkdirs()
             File(sub, backupName)
         } else {
-            backupName
-        })
+            File(backupDir, backupName)
+        }
         src.copyTo(dst, overwrite = true)
     }
 
