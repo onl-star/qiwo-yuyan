@@ -11,6 +11,7 @@ import androidx.preference.PreferenceScreen
 import com.yuyan.imemodule.application.CustomConstant
 import com.yuyan.imemodule.application.Launcher
 import com.yuyan.imemodule.prefs.AppPrefs
+import com.yuyan.imemodule.sync.InstallationHelper
 import com.yuyan.imemodule.sync.SyncEngine
 import com.yuyan.imemodule.sync.SyncMode
 import com.yuyan.imemodule.sync.SyncRequest
@@ -177,6 +178,11 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
             return
         }
 
+        val rimeUserDir = File(CustomConstant.RIME_DICT_PATH)
+
+        // 确保 installation.yaml 配置正确（本地管理，不同步）
+        InstallationHelper.ensure(rimeUserDir, device)
+
         val fullUrl = "$serverUrl/$folder"
 
         Toast.makeText(
@@ -188,7 +194,7 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
         lifecycleScope.launch {
             val request = SyncRequest(
                 deviceId = device,
-                rimeUserDir = File(CustomConstant.RIME_DICT_PATH),
+                rimeUserDir = rimeUserDir,
                 remoteUrl = fullUrl,
                 username = username.ifBlank { null },
                 password = password.ifBlank { null },

@@ -14,7 +14,9 @@ enum class SyncMode {
     /** 双向同步（基于 manifest 冲突检测） */
     Sync,
     /** 初始化/更新 rime-frost 方案 */
-    InitFrost
+    InitFrost,
+    /** 仅同步用户词库（sync/ 目录） */
+    SyncUserDict
 }
 
 /**
@@ -34,6 +36,8 @@ data class SyncRequest(
     val password: String?,
     /** 同步模式 */
     val mode: SyncMode,
+    /** 前端标识（用于 manifest） */
+    val frontend: String = "YuyanIme",
     /** rime-frost 资源目录（assets 中的路径） */
     val frostDir: File? = null,
     /** 仅试运行，不实际写入 */

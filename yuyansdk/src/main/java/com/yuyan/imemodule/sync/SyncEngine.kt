@@ -6,9 +6,11 @@ import java.io.File
 import java.io.FileInputStream
 import java.security.MessageDigest
 import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 /**
- * 同步引擎：WebDAV push/pull/sync + rime-frost 初始化。
+ * 同步引擎：WebDAV push/pull/sync/sync-user-dict + rime-frost 初始化。
  * 接口与 qiwo-sync-core 的 SyncEngine 对齐。
  */
 class SyncEngine {
@@ -24,6 +26,7 @@ class SyncEngine {
             SyncMode.Push -> push(request)
             SyncMode.Pull -> pull(request)
             SyncMode.Sync -> sync(request)
+            SyncMode.SyncUserDict -> syncUserDict(request)
         }
     }
 
@@ -69,20 +72,13 @@ class SyncEngine {
         val webDav = WebDavClient(request.remoteUrl, request.username, request.password)
         val messages = mutableListOf<String>()
         if (!request.dryRun) {
-            val rootOk = webDav.ensureRootAsync()
-            if (!rootOk) {
-                return SyncSummary(
-                    mode = SyncMode.Push,
-                    deviceId = request.deviceId,
-                    errors = listOf("Failed to create sync directory on server. Check URL and permissions.")
-                )
-            }
+            webDav.ensureRootAsync()
         }
 
         val localFiles = scanLocalFiles(request.rimeUserDir)
         var uploaded = 0
         var failed = 0
-        for ((path, entry) in localFiles.entries.sortedBy { it.key }) {
+        for ((path, _) in localFiles.entries.sortedBy { it.key.lowercase() }) {
             if (!request.dryRun) {
                 val file = File(request.rimeUserDir, path)
                 val ok = webDav.putFileAsync(path, file)
@@ -95,10 +91,10 @@ class SyncEngine {
             }
         }
 
-        // 写入清单
+        // 写入清单（总是写入，与 C# 一致）
         val manifest = createManifest(request, localFiles)
-        if (!request.dryRun && uploaded > 0) {
-            writeManifest(request.rimeUserDir, manifest)
+        if (!request.dryRun) {
+            writeLocalManifest(request.rimeUserDir, manifest)
             webDav.putBytesAsync(
                 SyncConstants.REMOTE_MANIFEST_FILE_NAME,
                 ManifestSerializer.toJsonBytes(manifest)
@@ -130,10 +126,10 @@ class SyncEngine {
         val remoteManifest = readRemoteManifest(webDav)
         var downloaded = 0
         var skipped = 0
+        var failed = 0
         val messages = mutableListOf<String>()
 
-        var failed = 0
-        for ((path, entry) in remoteManifest.files.entries.sortedBy { it.key }) {
+        for ((path, _) in remoteManifest.files.entries.sortedBy { it.key.lowercase() }) {
             if (!selector.shouldSync(path)) {
                 skipped++
                 continue
@@ -155,7 +151,7 @@ class SyncEngine {
         val localFiles = if (request.dryRun) remoteManifest.files else scanLocalFiles(request.rimeUserDir)
         val localManifest = createManifest(request, localFiles)
         if (!request.dryRun) {
-            writeManifest(request.rimeUserDir, localManifest)
+            writeLocalManifest(request.rimeUserDir, localManifest)
         }
 
         messages.add("Pulled $downloaded file(s).")
@@ -187,6 +183,55 @@ class SyncEngine {
         val previousManifest = readLocalManifest(request.rimeUserDir)
         val remoteManifest = readRemoteManifest(webDav)
         val localFiles = scanLocalFiles(request.rimeUserDir)
+
+        return doThreeWayMerge(request, webDav, localFiles, remoteManifest, previousManifest)
+    }
+
+    // ---- SyncUserDict (仅同步用户词库) ----
+    // 先由调用方触发 Rime 的 sync_user_data() 导出词库，再调用本方法。
+
+    private suspend fun syncUserDict(request: SyncRequest): SyncSummary {
+        if (request.remoteUrl.isNullOrEmpty()) {
+            return SyncSummary(
+                mode = SyncMode.SyncUserDict,
+                deviceId = request.deviceId,
+                errors = listOf("RemoteUrl is required for WebDAV sync.")
+            )
+        }
+
+        val webDav = WebDavClient(request.remoteUrl, request.username, request.password)
+        if (!request.dryRun) {
+            webDav.ensureRootAsync()
+        }
+
+        val previousManifest = readLocalManifest(request.rimeUserDir)
+        val remoteManifest = readRemoteManifest(webDav)
+        val localFiles = scanLocalFiles(request.rimeUserDir)
+
+        // 过滤：仅保留 sync/ 目录下的文件（用户词库文本导出）
+        val localDictFiles = localFiles.filterKeys { it.startsWith("sync/") }
+        val remoteDictFiles = remoteManifest.files.filterKeys { it.startsWith("sync/") }
+
+        return doThreeWayMerge(
+            request, webDav,
+            localDictFiles,
+            SyncManifest(deviceId = remoteManifest.deviceId, files = remoteDictFiles),
+            previousManifest,
+            label = "Dict sync"
+        )
+    }
+
+    /**
+     * 三路合并核心逻辑，用于 sync 和 syncUserDict 共用。
+     */
+    private suspend fun doThreeWayMerge(
+        request: SyncRequest,
+        webDav: WebDavClient,
+        localFiles: Map<String, SyncFileEntry>,
+        remoteManifest: SyncManifest,
+        previousManifest: SyncManifest,
+        label: String = "Sync"
+    ): SyncSummary {
         var uploaded = 0
         var downloaded = 0
         var skipped = 0
@@ -195,7 +240,7 @@ class SyncEngine {
 
         val allPaths = (localFiles.keys + remoteManifest.files.keys)
             .distinct()
-            .sorted()
+            .sortedBy { it.lowercase() }
 
         for (path in allPaths) {
             if (!selector.shouldSync(path)) {
@@ -247,7 +292,7 @@ class SyncEngine {
                     }
                     downloaded++
                 }
-                // 双方都变更 → 冲突：备份本地，保留远端
+                // 双方都变更 → 冲突：备份本地，保留远端（远端优先）
                 localEntry != null && remoteEntry != null && localChanged && remoteChanged -> {
                     if (!request.dryRun) {
                         backupLocalFile(request.rimeUserDir, path)
@@ -257,7 +302,7 @@ class SyncEngine {
                     conflicts++
                     messages.add("Conflict backed up, remote kept: $path")
                 }
-                // 双方都未变更 → 以时间戳为准
+                // 双方都未变更 → 以时间戳为准（较新的获胜）
                 localEntry != null && remoteEntry != null -> {
                     if (localEntry.lastWriteUtc >= remoteEntry.lastWriteUtc) {
                         if (!request.dryRun) {
@@ -279,16 +324,16 @@ class SyncEngine {
         val finalFiles = if (request.dryRun) localFiles else scanLocalFiles(request.rimeUserDir)
         val finalManifest = createManifest(request, finalFiles)
         if (!request.dryRun) {
-            writeManifest(request.rimeUserDir, finalManifest)
+            writeLocalManifest(request.rimeUserDir, finalManifest)
             webDav.putBytesAsync(
                 SyncConstants.REMOTE_MANIFEST_FILE_NAME,
                 ManifestSerializer.toJsonBytes(finalManifest)
             )
         }
 
-        messages.add("Uploaded $uploaded, downloaded $downloaded, conflicts $conflicts.")
+        messages.add("$label — uploaded $uploaded, downloaded $downloaded, conflicts $conflicts.")
         return SyncSummary(
-            mode = SyncMode.Sync,
+            mode = request.mode,
             deviceId = request.deviceId,
             uploaded = uploaded,
             downloaded = downloaded,
@@ -300,6 +345,7 @@ class SyncEngine {
 
     // ---- 辅助方法 ----
 
+    /** 扫描本地文件（仅通过 FileSelector 过滤，与 C# LocalFileStore.Scan 一致）。 */
     private fun scanLocalFiles(rimeDir: File): Map<String, SyncFileEntry> {
         val result = mutableMapOf<String, SyncFileEntry>()
         if (!rimeDir.exists()) return result
@@ -313,15 +359,9 @@ class SyncEngine {
         result: MutableMap<String, SyncFileEntry>
     ) {
         for (file in currentDir.listFiles() ?: emptyArray()) {
-            if (file.name == SyncConstants.LOCAL_MANIFEST_FILE_NAME) continue
-            if (file.name.startsWith(".")) continue
-
             val relativePath = file.relativeTo(baseDir).path.replace('\\', '/')
 
             if (file.isDirectory) {
-                // 检查排除模式，跳过不需要同步的目录
-                val dirPath = "$relativePath/"
-                if (dirPath.startsWith("build/") || dirPath.startsWith(".userdb/")) continue
                 scanDir(baseDir, file, result)
             } else {
                 if (selector.shouldSync(relativePath)) {
@@ -342,23 +382,26 @@ class SyncEngine {
     ): SyncManifest {
         return SyncManifest(
             deviceId = request.deviceId,
-            frontend = "YuyanIme",
+            frontend = request.frontend,
             updatedAtUtc = Instant.now(),
             files = files
         )
     }
 
-    private fun writeManifest(rimeDir: File, manifest: SyncManifest) {
-        val file = File(rimeDir, SyncConstants.LOCAL_MANIFEST_FILE_NAME)
-        file.parentFile?.mkdirs()
+    /** 写入本地清单到 .qiwo-sync/manifest.json。 */
+    private fun writeLocalManifest(rimeDir: File, manifest: SyncManifest) {
+        val stateDir = File(rimeDir, SyncConstants.STATE_DIR)
+        stateDir.mkdirs()
+        val file = File(stateDir, SyncConstants.LOCAL_MANIFEST_FILE_NAME)
         try {
             file.writeBytes(ManifestSerializer.toJsonBytes(manifest))
         } catch (_: Exception) {
         }
     }
 
+    /** 读取本地清单：.qiwo-sync/manifest.json。 */
     private fun readLocalManifest(rimeDir: File): SyncManifest {
-        val file = File(rimeDir, SyncConstants.LOCAL_MANIFEST_FILE_NAME)
+        val file = File(rimeDir, "${SyncConstants.STATE_DIR}/${SyncConstants.LOCAL_MANIFEST_FILE_NAME}")
         return if (file.exists()) {
             try {
                 ManifestSerializer.fromJsonBytes(file.readBytes())
@@ -370,6 +413,7 @@ class SyncEngine {
         }
     }
 
+    /** 读取远端清单：.qiwo-sync-manifest.json。 */
     private suspend fun readRemoteManifest(webDav: WebDavClient): SyncManifest {
         val bytes = webDav.getBytesAsync(SyncConstants.REMOTE_MANIFEST_FILE_NAME)
         return if (bytes != null) {
@@ -383,21 +427,19 @@ class SyncEngine {
         }
     }
 
+    /**
+     * 备份本地文件到 .qiwo-sync/backups/{yyyyMMddHHmmss}/{relativePath}。
+     * 与 C# LocalFileStore.Backup 一致。
+     */
     private fun backupLocalFile(rimeDir: File, relativePath: String) {
         val src = File(rimeDir, relativePath)
         if (!src.exists()) return
-        val backupDir = File(rimeDir, "backup")
-        backupDir.mkdirs()
-        val timestamp = java.time.LocalDateTime.now()
-            .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
-        val backupName = "${src.name}.$timestamp.bak"
-        val dst: File = if (relativePath.contains('/')) {
-            val sub = File(backupDir, relativePath.substringBeforeLast('/'))
-            sub.mkdirs()
-            File(sub, backupName)
-        } else {
-            File(backupDir, backupName)
-        }
+
+        val timestamp = java.time.LocalDateTime.now(ZoneOffset.UTC)
+            .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+        val backupDir = File(rimeDir, "${SyncConstants.STATE_DIR}/${SyncConstants.BACKUP_DIR}/$timestamp")
+        val dst = File(backupDir, relativePath)
+        dst.parentFile?.mkdirs()
         src.copyTo(dst, overwrite = true)
     }
 
@@ -416,8 +458,10 @@ class SyncEngine {
     }
 }
 
-/** 同步常量。 */
+/** 同步常量，与 qiwo-sync-core 的 SyncConstants 对齐。 */
 object SyncConstants {
-    const val LOCAL_MANIFEST_FILE_NAME = "sync_manifest.json"
-    const val REMOTE_MANIFEST_FILE_NAME = "sync_manifest.json"
+    const val STATE_DIR = ".qiwo-sync"
+    const val BACKUP_DIR = "backups"
+    const val LOCAL_MANIFEST_FILE_NAME = "manifest.json"
+    const val REMOTE_MANIFEST_FILE_NAME = ".qiwo-sync-manifest.json"
 }
