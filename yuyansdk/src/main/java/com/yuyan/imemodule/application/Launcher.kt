@@ -39,12 +39,17 @@ class Launcher {
             // 复制词库文件
             val dataDictVersion = AppPrefs.getInstance().internal.dataDictVersion.getValue()
             if (dataDictVersion < CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM) {
-                //rime词库
+                // 清理旧版残留：删除 rime_frost 遗留的 root default.yaml
+                val oldDefault = java.io.File(CustomConstant.RIME_DICT_PATH, "default.yaml")
+                if (oldDefault.exists() && !oldDefault.delete()) {
+                    android.util.Log.w("QiwoLauncher", "Failed to delete stale root default.yaml")
+                }
+                //rime词库（含 build/ 预编译 schema）
                 copyFileOrDir(context, "rime", "", CustomConstant.RIME_DICT_PATH, true)
                 copyFileOrDir(context, "hw", "", CustomConstant.HW_DICT_PATH, true)
                 // rime-frost 白霜拼音方案（不覆盖已有文件，保护原预编译方案）
                 copyFileOrDir(context, "rime_frost", "", CustomConstant.RIME_DICT_PATH, false)
-                // 写入 default.custom.yaml（仅在首次部署时）
+                // 写入 default.custom.yaml
                 writeDefaultCustom()
                 AppPrefs.getInstance().internal.dataDictVersion.setValue(CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM)
             }

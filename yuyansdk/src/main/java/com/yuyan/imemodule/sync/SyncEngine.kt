@@ -75,17 +75,23 @@ class SyncEngine {
         val messages = mutableListOf<String>()
         var uploaded = 0
 
+        var failed = 0
         for ((path, entry) in localFiles.entries.sortedBy { it.key }) {
             if (!request.dryRun) {
                 val file = File(request.rimeUserDir, path)
-                webDav.putFileAsync(path, file)
+                val ok = webDav.putFileAsync(path, file)
+                if (ok) uploaded++ else {
+                    failed++
+                    messages.add("Failed to upload: $path")
+                }
+            } else {
+                uploaded++
             }
-            uploaded++
         }
 
         // 写入清单
         val manifest = createManifest(request, localFiles)
-        if (!request.dryRun) {
+        if (!request.dryRun && uploaded > 0) {
             writeManifest(request.rimeUserDir, manifest)
             webDav.putBytesAsync(
                 SyncConstants.REMOTE_MANIFEST_FILE_NAME,
@@ -93,12 +99,13 @@ class SyncEngine {
             )
         }
 
-        messages.add("Pushed $uploaded file(s).")
+        messages.add("Pushed $uploaded file(s), $failed failed.")
         return SyncSummary(
             mode = SyncMode.Push,
             deviceId = request.deviceId,
             uploaded = uploaded,
-            messages = messages
+            messages = messages,
+            errors = if (failed > 0) listOf("$failed file(s) failed to upload") else emptyList()
         )
     }
 
@@ -119,6 +126,7 @@ class SyncEngine {
         var skipped = 0
         val messages = mutableListOf<String>()
 
+        var failed = 0
         for ((path, entry) in remoteManifest.files.entries.sortedBy { it.key }) {
             if (!selector.shouldSync(path)) {
                 skipped++
@@ -127,9 +135,14 @@ class SyncEngine {
 
             if (!request.dryRun) {
                 val localFile = File(request.rimeUserDir, path)
-                webDav.getFileAsync(path, localFile)
+                val ok = webDav.getFileAsync(path, localFile)
+                if (ok) downloaded++ else {
+                    failed++
+                    messages.add("Failed to download: $path")
+                }
+            } else {
+                downloaded++
             }
-            downloaded++
         }
 
         // 更新本地清单
