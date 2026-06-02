@@ -15,10 +15,12 @@ object CustomConstant {
     const val SCHEMA_ZH_DOUBLE_FLYPY = "double_pinyin_" // 小鹤双拼
     const val SCHEMA_ZH_DOUBLE_LX17 = "double_pinyin_ls17" // 乱序17双拼
     const val SCHEMA_ZH_STROKE = "stroke" // 五笔画
+    const val SCHEMA_FROST = "rime_frost" // 白霜拼音（Qiwo 默认方案）
     const val CURRENT_RIME_DICT_DATA_VERSIOM = 20260325
     const val YUYAN_IME_REPO = "https://github.com/gurecn/YuyanIme"
+    const val QIWO_IME_REPO = "https://github.com/LeaWron/qiwo-yuyan"
     const val LICENSE_URL = "https://www.gnu.org/licenses/gpl-3.0.html"
-    const val FEEDBACK_TXC_REPO = "https://github.com/gurecn/YuyanIme/issues"
+    const val FEEDBACK_TXC_REPO = "https://github.com/LeaWron/qiwo-yuyan/issues"
 
     // 花漾字状态
     var flowerTypeface = FlowerTypefaceMode.Disabled
