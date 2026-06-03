@@ -35,10 +35,19 @@ jobs:
       - name: Configure Android SDK
         run: |
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
-          NDK_VERSION="27.0.12077973"
+          NDK_VERSION="26.3.11579264"
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
-          "${SDKMANAGER}" "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;${NDK_VERSION}"
-          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${NDK_VERSION}" >> "${GITHUB_ENV}"
+          "${SDKMANAGER}" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          if [ -n "${ANDROID_NDK_HOME:-}" ] && [ -d "${ANDROID_NDK_HOME}" ]; then
+            echo "Using preinstalled NDK: ${ANDROID_NDK_HOME}"
+          elif [ -n "${ANDROID_NDK_LATEST_HOME:-}" ] && [ -d "${ANDROID_NDK_LATEST_HOME}" ]; then
+            ANDROID_NDK_HOME="${ANDROID_NDK_LATEST_HOME}"
+            echo "Using latest preinstalled NDK: ${ANDROID_NDK_HOME}"
+          else
+            "${SDKMANAGER}" "ndk;${NDK_VERSION}"
+            ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/${NDK_VERSION}"
+          fi
+          echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}" >> "${GITHUB_ENV}"
 
       - name: Setup Rust
         run: |
@@ -47,8 +56,11 @@ jobs:
 
       - name: Build qiwo-sync-core JNI library
         run: |
-          export CC_aarch64_linux_android="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android23-clang"
-          export AR_aarch64_linux_android="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
+          NDK_TOOLCHAIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${NDK_TOOLCHAIN}/aarch64-linux-android23-clang"
+          export CC_aarch64_linux_android="${CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER}"
+          export AR_aarch64_linux_android="${NDK_TOOLCHAIN}/llvm-ar"
+          test -x "${CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER}"
           cargo build --manifest-path qiwo-sync-core/Cargo.toml --release -p qiwo-sync --target aarch64-linux-android
           mkdir -p yuyansdk/src/main/jniLibs/arm64-v8a
           cp qiwo-sync-core/target/aarch64-linux-android/release/libqiwo_sync.so yuyansdk/src/main/jniLibs/arm64-v8a/
@@ -162,10 +174,19 @@ jobs:
       - name: Configure Android SDK
         run: |
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
-          NDK_VERSION="27.0.12077973"
+          NDK_VERSION="26.3.11579264"
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
-          "${SDKMANAGER}" "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;${NDK_VERSION}"
-          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${NDK_VERSION}" >> "${GITHUB_ENV}"
+          "${SDKMANAGER}" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          if [ -n "${ANDROID_NDK_HOME:-}" ] && [ -d "${ANDROID_NDK_HOME}" ]; then
+            echo "Using preinstalled NDK: ${ANDROID_NDK_HOME}"
+          elif [ -n "${ANDROID_NDK_LATEST_HOME:-}" ] && [ -d "${ANDROID_NDK_LATEST_HOME}" ]; then
+            ANDROID_NDK_HOME="${ANDROID_NDK_LATEST_HOME}"
+            echo "Using latest preinstalled NDK: ${ANDROID_NDK_HOME}"
+          else
+            "${SDKMANAGER}" "ndk;${NDK_VERSION}"
+            ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/${NDK_VERSION}"
+          fi
+          echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}" >> "${GITHUB_ENV}"
 
       - name: Setup Rust
         run: |
@@ -174,8 +195,11 @@ jobs:
 
       - name: Build qiwo-sync-core JNI library
         run: |
-          export CC_aarch64_linux_android="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android23-clang"
-          export AR_aarch64_linux_android="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
+          NDK_TOOLCHAIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${NDK_TOOLCHAIN}/aarch64-linux-android23-clang"
+          export CC_aarch64_linux_android="${CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER}"
+          export AR_aarch64_linux_android="${NDK_TOOLCHAIN}/llvm-ar"
+          test -x "${CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER}"
           cargo build --manifest-path qiwo-sync-core/Cargo.toml --release -p qiwo-sync --target aarch64-linux-android
           mkdir -p yuyansdk/src/main/jniLibs/arm64-v8a
           cp qiwo-sync-core/target/aarch64-linux-android/release/libqiwo_sync.so yuyansdk/src/main/jniLibs/arm64-v8a/
