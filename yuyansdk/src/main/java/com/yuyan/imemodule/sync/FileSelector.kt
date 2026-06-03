@@ -54,7 +54,7 @@ object FileSelector {
 
     /**
      * 判断文件是否应该同步。
-     * 解析顺序与 C# FileSelector.ShouldSync 一致：
+     * 解析顺序与 Rust qiwo-sync-core FileSelector 保持一致：
      * 1. 规范化路径
      * 2. 排除目录
      * 3. 排除 .userdb 路径段

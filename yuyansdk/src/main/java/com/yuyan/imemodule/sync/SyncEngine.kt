@@ -91,7 +91,7 @@ class SyncEngine {
             }
         }
 
-        // 写入清单（总是写入，与 C# 一致）
+        // 写入清单，与 Rust qiwo-sync-core 的行为保持一致。
         val manifest = createManifest(request, localFiles)
         if (!request.dryRun) {
             writeLocalManifest(request.rimeUserDir, manifest)
@@ -345,7 +345,7 @@ class SyncEngine {
 
     // ---- 辅助方法 ----
 
-    /** 扫描本地文件（仅通过 FileSelector 过滤，与 C# LocalFileStore.Scan 一致）。 */
+    /** 扫描本地文件，仅通过 FileSelector 过滤。 */
     private fun scanLocalFiles(rimeDir: File): Map<String, SyncFileEntry> {
         val result = mutableMapOf<String, SyncFileEntry>()
         if (!rimeDir.exists()) return result
@@ -429,7 +429,7 @@ class SyncEngine {
 
     /**
      * 备份本地文件到 .qiwo-sync/backups/{yyyyMMddHHmmss}/{relativePath}。
-     * 与 C# LocalFileStore.Backup 一致。
+     * 与 Rust qiwo-sync-core 的备份目录结构保持一致。
      */
     private fun backupLocalFile(rimeDir: File, relativePath: String) {
         val src = File(rimeDir, relativePath)

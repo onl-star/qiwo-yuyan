@@ -59,8 +59,7 @@ class SyncWorker(
             dryRun = false
         )
 
-        val engine = SyncEngine()
-        val summary = engine.execute(request)
+        val summary = NativeSyncEngine.execute(request)
 
         if (summary.hasErrors) {
             Log.e(TAG, "Sync failed: ${summary.errors.first()}")

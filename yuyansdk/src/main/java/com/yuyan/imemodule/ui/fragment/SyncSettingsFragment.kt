@@ -12,7 +12,7 @@ import com.yuyan.imemodule.application.CustomConstant
 import com.yuyan.imemodule.application.Launcher
 import com.yuyan.imemodule.prefs.AppPrefs
 import com.yuyan.imemodule.sync.InstallationHelper
-import com.yuyan.imemodule.sync.SyncEngine
+import com.yuyan.imemodule.sync.NativeSyncEngine
 import com.yuyan.imemodule.sync.SyncMode
 import com.yuyan.imemodule.sync.SyncRequest
 import com.yuyan.imemodule.sync.SyncScheduler
@@ -28,7 +28,6 @@ import java.io.File
 class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sync) {
 
     private val syncPrefs = AppPrefs.getInstance().sync
-    private val engine = SyncEngine()
     private val sp: SharedPreferences
         get() = PreferenceManager.getDefaultSharedPreferences(Launcher.instance.context)
 
@@ -202,7 +201,7 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
                 dryRun = false
             )
 
-            val summary = engine.execute(request)
+            val summary = NativeSyncEngine.execute(request)
 
             val message = when {
                 summary.hasErrors -> summary.errors.joinToString("\n")
