@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.qiwo.sync.QiwoSync
 import com.yuyan.imemodule.application.CustomConstant
 import com.yuyan.imemodule.prefs.AppPrefs
 import com.yuyan.inputmethod.core.Rime
@@ -49,6 +50,8 @@ class SyncWorker(
         val fullUrl = "$serverUrl/$folder"
         Log.i(TAG, "Starting background sync to $fullUrl")
 
+        syncRimeUserData("export")
+
         val request = SyncRequest(
             deviceId = device,
             rimeUserDir = rimeUserDir,
@@ -69,6 +72,8 @@ class SyncWorker(
         Log.i(TAG, "Sync completed: uploaded=${summary.uploaded}, " +
             "downloaded=${summary.downloaded}, conflicts=${summary.conflictsBackedUp}")
 
+        syncRimeUserData("import")
+
         // 如果有文件变更，触发 Rime 重新部署
         if (summary.totalFiles > 0) {
             try {
@@ -81,6 +86,20 @@ class SyncWorker(
         }
 
         return Result.success()
+    }
+
+    private fun syncRimeUserData(stage: String): Boolean {
+        return try {
+            Rime.getInstance(false)
+            val ok = QiwoSync.syncUserData()
+            if (!ok) {
+                Log.w(TAG, "Rime sync_user_data $stage failed")
+            }
+            ok
+        } catch (e: Throwable) {
+            Log.e(TAG, "Rime sync_user_data $stage failed", e)
+            false
+        }
     }
 
     private fun getDeviceId(): String {

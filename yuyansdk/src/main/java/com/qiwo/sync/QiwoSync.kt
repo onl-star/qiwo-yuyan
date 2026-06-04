@@ -16,6 +16,20 @@ object QiwoSync {
   @JvmStatic
   external fun nativeSync(jsonRequest: String): String
 
+  /** Trigger Rime's native user data export/import through libyuyanime. */
+  @JvmStatic
+  external fun nativeSyncUserData(): Boolean
+
+  fun syncUserData(): Boolean {
+    return try {
+      nativeSyncUserData()
+    } catch (_: UnsatisfiedLinkError) {
+      false
+    } catch (_: Exception) {
+      false
+    }
+  }
+
   /** Execute sync with typed parameters. Returns success + message. */
   fun execute(
     rimeUserDir: String,
