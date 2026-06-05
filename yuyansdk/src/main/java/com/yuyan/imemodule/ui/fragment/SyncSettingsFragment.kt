@@ -8,6 +8,7 @@ import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceManager
 import androidx.preference.PreferenceScreen
+import com.qiwo.sync.QiwoSync
 import com.yuyan.imemodule.application.CustomConstant
 import com.yuyan.imemodule.application.Launcher
 import com.yuyan.imemodule.prefs.AppPrefs
@@ -191,6 +192,10 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
         ).show()
 
         lifecycleScope.launch {
+            if (mode != SyncMode.Pull) {
+                syncRimeUserData()
+            }
+
             val request = SyncRequest(
                 deviceId = device,
                 rimeUserDir = rimeUserDir,
@@ -202,6 +207,10 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
             )
 
             val summary = NativeSyncEngine.execute(request)
+
+            if (!summary.hasErrors) {
+                syncRimeUserData()
+            }
 
             val message = when {
                 summary.hasErrors -> summary.errors.joinToString("\n")
@@ -218,6 +227,15 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
                 Rime.destroy()
                 Rime.getInstance(true)
             }
+        }
+    }
+
+    private fun syncRimeUserData(): Boolean {
+        return try {
+            Rime.getInstance(false)
+            QiwoSync.syncUserData()
+        } catch (_: Throwable) {
+            false
         }
     }
 

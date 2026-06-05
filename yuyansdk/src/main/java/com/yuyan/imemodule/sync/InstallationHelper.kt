@@ -20,26 +20,46 @@ object InstallationHelper {
     fun ensure(rimeUserDir: File, deviceId: String) {
         val file = File(rimeUserDir, "installation.yaml")
         file.parentFile?.mkdirs()
+        val safeId = makeSafeId(deviceId)
+        val syncDirPath = syncDirForYaml(rimeUserDir)
 
         if (file.exists()) {
-            val existing = file.readText(Charsets.UTF_8)
+            val lines = file.readLines(Charsets.UTF_8)
             var needsUpdate = false
-            var updated = existing.trimEnd()
+            var hasSyncDir = false
+            var hasInstallationId = false
+            val updated = mutableListOf<String>()
 
-            // 确保 sync_dir 存在
-            if (!updated.contains("sync_dir:")) {
-                updated += "\nsync_dir: \"$SYNC_DIR\"\n"
-                needsUpdate = true
+            for (line in lines) {
+                val stripped = line.trimStart()
+                when {
+                    stripped.startsWith("sync_dir:") -> {
+                        hasSyncDir = true
+                        val newLine = "sync_dir: \"$syncDirPath\""
+                        updated += newLine
+                        needsUpdate = needsUpdate || line != newLine
+                    }
+                    stripped.startsWith("installation_id:") -> {
+                        hasInstallationId = true
+                        val newLine = "installation_id: \"$safeId\""
+                        updated += newLine
+                        needsUpdate = needsUpdate || line != newLine
+                    }
+                    else -> updated += line
+                }
             }
 
-            // 确保 installation_id 存在
-            if (!updated.contains("installation_id:")) {
-                updated += "\ninstallation_id: \"${makeSafeId(deviceId)}\"\n"
+            if (!hasSyncDir) {
+                updated += "sync_dir: \"$syncDirPath\""
+                needsUpdate = true
+            }
+            if (!hasInstallationId) {
+                updated += "installation_id: \"$safeId\""
                 needsUpdate = true
             }
 
             if (needsUpdate) {
-                file.writeText(updated, Charsets.UTF_8)
+                file.writeText(updated.joinToString("\n").trimEnd() + "\n", Charsets.UTF_8)
             }
             return
         }
@@ -48,8 +68,8 @@ object InstallationHelper {
         val yaml = buildString {
             appendLine("distribution: \"Qiwo\"")
             appendLine("distribution_version: \"1.0\"")
-            appendLine("installation_id: \"${makeSafeId(deviceId)}\"")
-            appendLine("sync_dir: \"$SYNC_DIR\"")
+            appendLine("installation_id: \"$safeId\"")
+            appendLine("sync_dir: \"$syncDirPath\"")
         }
         file.writeText(yaml, Charsets.UTF_8)
     }
@@ -68,11 +88,16 @@ object InstallationHelper {
      * 替换空格和特殊字符为 `-`，转为小写。
      */
     fun makeSafeId(deviceId: String): String {
-        return deviceId
+        val safeId = deviceId
             .replace(' ', '-')
             .replace(':', '-')
             .replace('\\', '-')
             .replace('/', '-')
             .lowercase()
+        return safeId.ifBlank { "unknown" }
+    }
+
+    private fun syncDirForYaml(rimeUserDir: File): String {
+        return File(rimeUserDir, SYNC_DIR).absolutePath.replace('\\', '/')
     }
 }
