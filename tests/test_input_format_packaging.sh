@@ -9,6 +9,8 @@ ime_service_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/service/ImeSe
 candidate_view_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/candidate/CandidateView.kt"
 rime_engine_file="$root/yuyansdk/src/main/java/com/yuyan/inputmethod/RimeEngine.kt"
 gradle_file="$root/yuyansdk/build.gradle"
+android_source_root="$root/yuyansdk/src/main/java"
+android_res_root="$root/yuyansdk/src/main/res"
 
 for file in "$wrapper_file" "$prefs_file" "$strings_file" "$ime_service_file" "$candidate_view_file" "$rime_engine_file" "$gradle_file"; do
   [[ -f "$file" ]] || {
@@ -61,6 +63,16 @@ grep -A6 'inputCommitAutoSpacing = switch' "$prefs_file" | grep -q 'true' || {
   echo "inputCommitAutoSpacing must default to true" >&2
   exit 1
 }
+
+if grep -Rqs 'auto_commit_spacing' "$android_source_root" "$android_res_root"; then
+  echo "Android must not depend on the desktop Rime auto_commit_spacing option" >&2
+  exit 1
+fi
+
+if grep -RqsE 'Ctrl\+grave|Control\+grave|F4 switcher|switcher/save_options' "$android_source_root" "$android_res_root"; then
+  echo "Android must not expose or depend on the desktop Ctrl+grave/F4 switcher entry" >&2
+  exit 1
+fi
 
 grep -q 'input_commit_auto_spacing">中英数字自动空格<' "$strings_file" || {
   echo "strings.xml must expose the 中英数字自动空格 label" >&2
