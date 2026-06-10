@@ -104,6 +104,13 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             abcSearchEnglishCell.getValue()
         }
 
+        val inputCommitAutoSpacing = switch(
+            R.string.input_commit_auto_spacing,
+            "input_commit_auto_spacing_enable",
+            true,
+            R.string.input_commit_auto_spacing_summary
+        )
+
         val titleEmoji = category(R.string.emoji_setting)
         val emojiInput = switch(
             R.string.emoji_input, "emoji_input_enable", true

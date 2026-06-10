@@ -18,6 +18,47 @@ static def getAppBuildTime() {
     return "git log -1 --pretty=%ai".execute().text.trim()
 }
 
+def qiwoInputFormatCoreDir = rootProject.file('../qiwo-input-format-core')
+def qiwoInputFormatPrebuiltJniLibsDir = new File(qiwoInputFormatCoreDir, 'target/android-jniLibs')
+def qiwoInputFormatGeneratedJniLibsDir = file("$buildDir/generated/jniLibs/qiwoInputFormat")
+def qiwoInputFormatAndroidTargets = [
+        'arm64-v8a'  : 'aarch64-linux-android',
+        'armeabi-v7a': 'armv7-linux-androideabi',
+        'x86'        : 'i686-linux-android',
+        'x86_64'     : 'x86_64-linux-android',
+]
+
+def copyQiwoInputFormatJniLibs = tasks.register('copyQiwoInputFormatJniLibs', Copy) {
+    into(qiwoInputFormatGeneratedJniLibsDir)
+    qiwoInputFormatAndroidTargets.each { abi, targetTriple ->
+        from(new File(qiwoInputFormatCoreDir, "target/${targetTriple}/release")) {
+            include 'libqiwo_input_format.so'
+            into abi
+        }
+    }
+    onlyIf {
+        qiwoInputFormatAndroidTargets.values().any { targetTriple ->
+            new File(qiwoInputFormatCoreDir, "target/${targetTriple}/release/libqiwo_input_format.so").exists()
+        }
+    }
+}
+
+def verifyQiwoInputFormatJniLibs = tasks.register('verifyQiwoInputFormatJniLibs') {
+    dependsOn(copyQiwoInputFormatJniLibs)
+    doLast {
+        def missingAbis = qiwoInputFormatAndroidTargets.keySet().findAll { abi ->
+            !new File(qiwoInputFormatPrebuiltJniLibsDir, "${abi}/libqiwo_input_format.so").exists() &&
+                    !new File(qiwoInputFormatGeneratedJniLibsDir, "${abi}/libqiwo_input_format.so").exists()
+        }
+        if (!missingAbis.isEmpty()) {
+            throw new GradleException(
+                    "Missing libqiwo_input_format.so for Android ABI(s): ${missingAbis.join(', ')}. " +
+                            "Build qiwo-input-format-core for Android targets or place prebuilt libs under " +
+                            "${qiwoInputFormatPrebuiltJniLibsDir}.")
+        }
+    }
+}
+
 
 android {
     compileSdk 36
@@ -71,7 +112,7 @@ android {
     }
     sourceSets {
         offline {
-            jniLibs.srcDirs = ['libs']
+            jniLibs.srcDirs = ['libs', qiwoInputFormatPrebuiltJniLibsDir, qiwoInputFormatGeneratedJniLibsDir]
         }
     }
 
@@ -80,6 +121,10 @@ android {
         sourceCompatibility 17
         targetCompatibility 17
     }
+}
+
+tasks.matching { it.name == 'preBuild' }.configureEach {
+    dependsOn(verifyQiwoInputFormatJniLibs)
 }
 
 dependencies {

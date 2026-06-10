@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import com.qiwo.inputformat.QiwoInputFormat
 import com.yuyan.imemodule.candidate.CandidateView
 import com.yuyan.imemodule.data.emojicon.YuyanEmojiCompat
 import com.yuyan.imemodule.data.theme.Theme
@@ -38,6 +39,10 @@ import splitties.bitflags.hasFlag
  * Main class of the Pinyin input method. 输入法服务
  */
 class ImeService : InputMethodService() {
+    private companion object {
+        const val INPUT_FORMAT_CONTEXT_LENGTH = 16
+    }
+
     private var isHardwareKeyboard = false
     private var isWindowShown = false // 键盘窗口是否已显示
     private lateinit var mInputView: InputView
@@ -266,18 +271,34 @@ class ImeService : InputMethodService() {
      * 发送字符串给编辑框
      */
     fun commitText(text: String) {
-        currentInputConnection.commitText(StringUtils.converted2FlowerTypeface(text), 1)
+        val formattedText = formatCommitText(text)
+        currentInputConnection.commitText(StringUtils.converted2FlowerTypeface(formattedText), 1)
     }
 
     /**
      * 发送字符串给编辑框
      */
     fun commitText(text: String, newCursorPosition: Int) {
-        currentInputConnection.commitText(StringUtils.converted2FlowerTypeface(text), newCursorPosition)
+        val formattedText = formatCommitText(text)
+        currentInputConnection.commitText(StringUtils.converted2FlowerTypeface(formattedText), newCursorPosition)
+    }
+
+    private fun formatCommitText(text: String): String {
+        val inputConnection = currentInputConnection ?: return text
+        return QiwoInputFormat.formatCommitText(
+            commitText = text,
+            beforeCursor = inputConnection.getTextBeforeCursor(INPUT_FORMAT_CONTEXT_LENGTH, 0)?.toString(),
+            afterCursor = inputConnection.getTextAfterCursor(INPUT_FORMAT_CONTEXT_LENGTH, 0)?.toString(),
+            enabled = getInstance().input.inputCommitAutoSpacing.getValue()
+        )
     }
 
     fun getTextBeforeCursor(length:Int) : String {
         return currentInputConnection.getTextBeforeCursor(length, 0).toString()
+    }
+
+    fun getTextAfterCursor(length:Int) : String {
+        return currentInputConnection.getTextAfterCursor(length, 0).toString()
     }
 
     fun commitTextEditMenu(id:Int) {
