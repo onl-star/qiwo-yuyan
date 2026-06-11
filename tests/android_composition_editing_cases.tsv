@@ -1,0 +1,7 @@
+name	initial_text	initial_caret	actions	expected_text	expected_caret	expected_display
+delete_before_middle_caret	mihao	1	backspace	ihao	0	|ihao
+insert_at_beginning	ihao	0	insert:n	nihao	1	n|ihao
+append_at_end	niha	4	insert:o	nihao	5	nihao|
+backspace_at_beginning	ihao	0	backspace	ihao	0	|ihao
+tap_before_start_clamps	mihao	-8	none	mihao	0	|mihao
+tap_after_end_clamps	mihao	99	none	mihao	5	mihao|
