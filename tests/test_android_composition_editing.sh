@@ -39,7 +39,7 @@ grep -q 'SCHEMA_FROST' "$rime_engine_file" || {
   exit 1
 }
 
-if grep -q 'SCHEMA_ZH_T9\\|SCHEMA_FROST_T9\\|SCHEMA_ZH_DOUBLE_LX17\\|SCHEMA_FROST_DOUBLE_PREFIX\\|SCHEMA_ZH_STROKE\\|SCHEMA_ZH_HANDWRITING' "$rime_engine_file"; then
+if grep -Eq 'SCHEMA_ZH_T9|SCHEMA_FROST_T9|SCHEMA_ZH_DOUBLE_LX17|SCHEMA_FROST_DOUBLE_PREFIX|SCHEMA_ZH_STROKE|SCHEMA_ZH_HANDWRITING' "$rime_engine_file"; then
   grep -q 'isFullKeyboardPinyinCompositionEditable' "$rime_engine_file" || {
     echo "Unsupported schema references must remain outside composition editing enablement" >&2
     exit 1
@@ -56,12 +56,12 @@ grep -q 'deleteCompositionBeforeCaret' "$rime_engine_file" || {
   exit 1
 }
 
-grep -q 'Rime\\.replaceKey(.*0, key' "$rime_engine_file" || {
+grep -Eq 'Rime\.replaceKey\(.*0, key' "$rime_engine_file" || {
   echo "Caret insertion must use Rime.replaceKey(caret, 0, key)" >&2
   exit 1
 }
 
-grep -q 'Rime\\.replaceKey(.*1, ""' "$rime_engine_file" || {
+grep -Eq 'Rime\.replaceKey\(.*1, ""' "$rime_engine_file" || {
   echo "Caret backspace must use Rime.replaceKey(caret - 1, 1, empty replacement)" >&2
   exit 1
 }

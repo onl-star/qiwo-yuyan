@@ -24,6 +24,7 @@ object DecodingInfo {
         isAssociate = false
         activeCandidate = 0
         activeCandidateBar = 0
+        clearCompositionCaret()
         candidatesLiveData.value = emptyList()
         Kernel.reset()
     }
@@ -56,6 +57,7 @@ object DecodingInfo {
     fun selectPrefix(position: Int) {
         activeCandidate = 0
         activeCandidateBar = 0
+        clearCompositionCaret()
         Kernel.selectPrefix(position)
     }
 
@@ -77,10 +79,36 @@ object DecodingInfo {
         get() = Kernel.isFinish
 
     val composingStrForDisplay: String   //获取显示的拼音字符串/
-        get() = Kernel.wordsShowPinyin
+        get() = compositionTextForDisplay
+
+    val compositionTextForDisplay: String
+        get() = Kernel.compositionTextForDisplay
 
     val composingStrForCommit: String   // 获取输入的拼音字符串
         get() = Kernel.wordsShowPinyin.replace("'", "").ifEmpty { getCandidate(0)?.text?:""}
+
+    val isCompositionCaretActive: Boolean
+        get() = Kernel.isCompositionCaretActive()
+
+    fun setCompositionCaret(caret: Int): Boolean {
+        return Kernel.setCompositionCaret(caret)
+    }
+
+    fun clearCompositionCaret() {
+        Kernel.clearCompositionCaret()
+    }
+
+    fun insertCompositionAtCaret(key: String): Boolean {
+        activeCandidate = 0
+        activeCandidateBar = 0
+        return Kernel.insertCompositionAtCaret(key)
+    }
+
+    fun deleteCompositionBeforeCaret(): Boolean {
+        activeCandidate = 0
+        activeCandidateBar = 0
+        return Kernel.deleteCompositionBeforeCaret()
+    }
 
     val nextPageCandidates: Int   // 获取下一页的候选词
         get() {
@@ -134,6 +162,7 @@ object DecodingInfo {
         isAssociate = associate
         activeCandidate = 0
         activeCandidateBar = 0
+        clearCompositionCaret()
         candidatesLiveData.value = words.asList()
     }
 
@@ -142,6 +171,7 @@ object DecodingInfo {
      */
     fun getAssociateWord(words: String) {
         isAssociate = true
+        clearCompositionCaret()
         Kernel.getAssociateWord(words)
     }
 }

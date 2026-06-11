@@ -6,6 +6,7 @@ import android.util.TypedValue
 import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
@@ -62,6 +63,8 @@ class CandidatesBar(context: Context?, attrs: AttributeSet?) : RelativeLayout(co
     private lateinit var mCandidatesMenuAdapter: CandidatesMenuAdapter
     private lateinit var candidatesData: LinearLayout //候选词视图
     private var activeCandNo:Int = 0
+    private var composingTouchX = 0f
+    private var composingTouchY = 0f
 
     fun initialize(cvListener: CandidateViewListener) {
         mCvListener = cvListener
@@ -79,6 +82,22 @@ class CandidatesBar(context: Context?, attrs: AttributeSet?) : RelativeLayout(co
             mComposingView = TextView(context).apply {
                 includeFontPadding = false
                 setPadding(dp(10), 0, dp(10), 0)
+                setOnTouchListener { _, event ->
+                    if (event.action == MotionEvent.ACTION_UP) {
+                        composingTouchX = event.x
+                        composingTouchY = event.y
+                    }
+                    false
+                }
+                setOnClickListener {
+                    val displayText = mComposingView.text.toString()
+                    val textLength = displayText.replace("|", "").length
+                    if (textLength > 0) {
+                        val rawOffset = getOffsetForPosition(composingTouchX, composingTouchY).coerceIn(0, displayText.length)
+                        val offset = displayText.take(rawOffset).count { it != '|' }.coerceIn(0, textLength)
+                        mCvListener.onClickCompositionCaret(offset)
+                    }
+                }
             }
             candidatesData = LinearLayout(context).apply {
                 gravity = Gravity.CENTER_VERTICAL
@@ -273,7 +292,7 @@ class CandidatesBar(context: Context?, attrs: AttributeSet?) : RelativeLayout(co
      * 显示候选词
      */
     fun showCandidates() {
-        mComposingView.text = DecodingInfo.composingStrForDisplay
+        mComposingView.text = DecodingInfo.compositionTextForDisplay
         val container = KeyboardManager.instance.currentContainer
         mIvMenuSetting.drawable.setLevel( if(container is InputBaseContainer) 0 else 1)
         if (container is ClipBoardContainer) {

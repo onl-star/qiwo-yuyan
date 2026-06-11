@@ -470,14 +470,18 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
                     service.getTextBeforeCursor(1).takeIf { it.isNotEmpty() }?.let { textBeforeCursors.push(it) }
                     sendKeyEvent(keyCode)
                 } else {
-                    DecodingInfo.deleteAction()
+                    if (!DecodingInfo.deleteCompositionBeforeCaret()) {
+                        DecodingInfo.deleteAction()
+                    }
                     updateCandidate()
                 }
                 true
             }
             (Character.isLetterOrDigit(keyChar) && keyCode != KeyEvent.KEYCODE_0) || keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON -> {
                 textBeforeCursors.clear()
-                DecodingInfo.inputAction(event)
+                if (!Character.isLetter(keyChar) || !DecodingInfo.insertCompositionAtCaret(label)) {
+                    DecodingInfo.inputAction(event)
+                }
                 updateCandidate()
                 true
             }
@@ -497,6 +501,7 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
     }
 
     fun resetToIdleState() {
+        DecodingInfo.clearCompositionCaret()
         resetCandidateWindow()
         if (hasSelectionAll) hasSelectionAll = false
     }
@@ -535,6 +540,7 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
     fun updateCandidateBar() = mSkbCandidatesBarView.scheduleShowCandidates()
 
     private fun resetCandidateWindow() {
+        DecodingInfo.clearCompositionCaret()
         DecodingInfo.reset()
         (KeyboardManager.instance.currentContainer as? T9TextContainer)?.updateSymbolListView()
     }
@@ -544,6 +550,12 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
             DevicesUtils.tryPlayKeyDown()
             DevicesUtils.tryVibrate(KeyboardManager.instance.currentContainer)
             chooseAndUpdate(choiceId)
+        }
+
+        override fun onClickCompositionCaret(caret: Int) {
+            DevicesUtils.tryPlayKeyDown()
+            DevicesUtils.tryVibrate(KeyboardManager.instance.currentContainer)
+            if (DecodingInfo.setCompositionCaret(caret)) updateCandidateBar()
         }
 
         override fun onClickMore(level: Int) {
@@ -649,6 +661,7 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
 
     private fun commitDecInfoText(resultText: String?) {
         resultText ?: return
+        DecodingInfo.clearCompositionCaret()
         if (isAddPhrases) {
             mAddPhrasesLayout.commitText(resultText)
         } else {

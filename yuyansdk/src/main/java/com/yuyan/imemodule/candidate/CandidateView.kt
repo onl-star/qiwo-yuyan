@@ -166,7 +166,9 @@ class CandidateView(context: Context, private val service: ImeService) : Lifecyc
                 if (DecodingInfo.isCandidatesEmpty || DecodingInfo.isAssociate) {
                     sendKeyEvent(keyCode)
                 } else {
-                    DecodingInfo.deleteAction()
+                    if (!DecodingInfo.deleteCompositionBeforeCaret()) {
+                        DecodingInfo.deleteAction()
+                    }
                     updateCandidate()
                 }
                 true
@@ -181,7 +183,9 @@ class CandidateView(context: Context, private val service: ImeService) : Lifecyc
                 true
             }
             Character.isLetter(keyChar) || keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON -> {
-                DecodingInfo.inputAction(event)
+                if (!Character.isLetter(keyChar) || !DecodingInfo.insertCompositionAtCaret(label)) {
+                    DecodingInfo.inputAction(event)
+                }
                 updateCandidate()
                 true
             }
@@ -193,6 +197,7 @@ class CandidateView(context: Context, private val service: ImeService) : Lifecyc
     }
 
     fun resetToIdleState() {
+        DecodingInfo.clearCompositionCaret()
         DecodingInfo.reset()
     }
 
@@ -214,6 +219,12 @@ class CandidateView(context: Context, private val service: ImeService) : Lifecyc
             DevicesUtils.tryPlayKeyDown()
             DevicesUtils.tryVibrate(KeyboardManager.instance.currentContainer)
             chooseAndUpdate(choiceId)
+        }
+
+        override fun onClickCompositionCaret(caret: Int) {
+            DevicesUtils.tryPlayKeyDown()
+            DevicesUtils.tryVibrate(KeyboardManager.instance.currentContainer)
+            if (DecodingInfo.setCompositionCaret(caret)) mSkbCandidatesBarView.showCandidates()
         }
 
         override fun onClickMore(level: Int) {}
@@ -239,6 +250,7 @@ class CandidateView(context: Context, private val service: ImeService) : Lifecyc
 
     private fun commitDecInfoText(resultText: String?) {
         resultText ?: return
+        DecodingInfo.clearCompositionCaret()
         service.commitText(StringUtils.converted2FlowerTypeface(resultText))
         if (InputModeSwitcher.isEnglish){
             service.finishComposingText()

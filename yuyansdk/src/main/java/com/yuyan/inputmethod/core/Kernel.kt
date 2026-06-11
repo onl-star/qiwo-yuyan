@@ -42,6 +42,29 @@ object Kernel {
         RimeEngine.selectPinyin(index)
     }
 
+    fun isCompositionCaretActive(): Boolean {
+        return RimeEngine.isCompositionCaretActive()
+    }
+
+    fun setCompositionCaret(caret: Int): Boolean {
+        return RimeEngine.setCompositionCaret(caret)
+    }
+
+    fun clearCompositionCaret() {
+        RimeEngine.clearCompositionCaret()
+    }
+
+    fun insertCompositionAtCaret(key: String): Boolean {
+        return RimeEngine.insertCompositionAtCaret(key)
+    }
+
+    fun deleteCompositionBeforeCaret(): Boolean {
+        return RimeEngine.deleteCompositionBeforeCaret()
+    }
+
+    val compositionTextForDisplay: String
+        get() = RimeEngine.compositionTextForDisplay()
+
     // 执行选择动作，选择了index指向的词语
     fun getWordSelectedWord(index: Int) {
         if (DecodingInfo.isAssociate) RimeEngine.selectAssociation(index)

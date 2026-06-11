@@ -22,6 +22,7 @@ object RimeEngine {
     var showCandidates: List<CandidateListItem> = emptyList() // 所有待展示的候选词
     var showComposition: String = "" // 候选词上方展示的拼音
     var preCommitText: String = "" // 待提交的文字
+    private var compositionCaret: Int? = null
     private var customPhraseSize: Int = 0 // 自定义引擎候选词长度
     const val MASK_CASE_LOWER = 0
     private var charCase = 0x0000
@@ -30,6 +31,7 @@ object RimeEngine {
     }
 
     fun selectSchema(mod: String): Boolean {
+        clearCompositionCaret()
         keyRecordStack.clear()
         charCase = MASK_CASE_LOWER
         Rime.startup(Launcher.instance.context, false)
@@ -92,6 +94,73 @@ object RimeEngine {
         } else emptyArray()
     }
 
+    fun isFullKeyboardPinyinCompositionEditable(): Boolean {
+        val schema = Rime.getCurrentRimeSchema()
+        return (schema == CustomConstant.SCHEMA_ZH_QWERTY || schema == CustomConstant.SCHEMA_FROST) &&
+                Rime.compositionText.isNotEmpty()
+    }
+
+    fun isCompositionCaretActive(): Boolean {
+        return compositionCaret != null && isFullKeyboardPinyinCompositionEditable()
+    }
+
+    fun setCompositionCaret(caret: Int): Boolean {
+        if (!isFullKeyboardPinyinCompositionEditable()) {
+            clearCompositionCaret()
+            return false
+        }
+        compositionCaret = clampCompositionCaret(caret)
+        return true
+    }
+
+    fun clearCompositionCaret() {
+        compositionCaret = null
+    }
+
+    fun compositionTextForDisplay(): String {
+        val composition = showComposition
+        val caret = compositionCaret
+        if (caret == null || composition.isEmpty() || !isFullKeyboardPinyinCompositionEditable()) return composition
+        val displayCaret = caret.coerceIn(0, composition.length)
+        return composition.substring(0, displayCaret) + "|" + composition.substring(displayCaret)
+    }
+
+    fun insertCompositionAtCaret(key: String): Boolean {
+        if (!isCompositionCaretActive()) return false
+        val caret = clampCompositionCaret(compositionCaret ?: Rime.compositionText.length)
+        val replaced = Rime.replaceKey(caret, 0, key)
+        updateCandidatesOrCommitText()
+        if (replaced) {
+            syncCompositionCaretAfterEdit(caret + key.length)
+        }
+        return replaced
+    }
+
+    fun deleteCompositionBeforeCaret(): Boolean {
+        if (!isCompositionCaretActive()) return false
+        val caret = clampCompositionCaret(compositionCaret ?: Rime.compositionText.length)
+        if (caret <= 0) return true
+        val deleteIndex = caret - 1
+        val replaced = Rime.replaceKey(deleteIndex, 1, "")
+        updateCandidatesOrCommitText()
+        if (replaced) {
+            syncCompositionCaretAfterEdit(deleteIndex)
+        }
+        return true
+    }
+
+    private fun clampCompositionCaret(caret: Int): Int {
+        return caret.coerceIn(0, Rime.compositionText.length)
+    }
+
+    private fun syncCompositionCaretAfterEdit(preferredCaret: Int) {
+        if (isFullKeyboardPinyinCompositionEditable()) {
+            compositionCaret = clampCompositionCaret(preferredCaret)
+        } else {
+            clearCompositionCaret()
+        }
+    }
+
     fun selectPinyin(index: Int) {
         val pinyinKey = keyRecordStack.pushPinyinSelectAction(pinyins[index]) ?: return
         Rime.replaceKey(pinyinKey.posInInput, pinyinKey.t9Keys().length, pinyinKey.pinyin())
@@ -125,6 +194,7 @@ object RimeEngine {
         pinyins = emptyArray()
         showComposition = ""
         preCommitText = ""
+        clearCompositionCaret()
         keyRecordStack.clear()
         Rime.clearComposition()
         if(charCase == KeyEvent.META_SHIFT_ON) charCase = MASK_CASE_LOWER
@@ -167,6 +237,7 @@ object RimeEngine {
     private fun updateCandidatesOrCommitText(): String? {
         val rimeCommit = Rime.getRimeCommit()
         if (rimeCommit != null) {
+            clearCompositionCaret()
             keyRecordStack.clear()
             preCommitText = rimeCommit.commitText
             preCommitText = if (charCase == KeyEvent.META_SHIFT_ON) {
@@ -183,6 +254,7 @@ object RimeEngine {
         val candidates = Rime.getRimeContext()?.candidates?.asList() ?: emptyList()
         customPhraseSize = 0
         val compositionText = Rime.compositionText
+        if (compositionText.isEmpty()) clearCompositionCaret()
         showCandidates = when {
             compositionText.isNotBlank() -> {
                 val phrase = CustomEngine.processPhrase(compositionText.replace("\'", ""))
