@@ -1,7 +1,17 @@
-name	display_text	target_boundary	actions	expected_text	expected_caret	forbidden_text
-marker_between_m_i	m|ihao	1	none	mihao	1	m|ihao
-backspace_visible_between_m_i	m|ihao	1	backspace	ihao	0	mhao
-target_boundary_between_m_i	mihao	1	none	mihao	1	
-tap_before_start_clamps	mihao	-8	none	mihao	0	
-tap_after_end_clamps	mihao	99	none	mihao	5	
-backspace_after_end	mihao|	5	backspace	miha	4	
+name	raw_text	display_text	target_boundary	actions	expected_text	expected_caret	forbidden_text
+marker_between_m_i	mihao	m|ihao	1	none	mihao	1	m|ihao
+backspace_visible_between_m_i	mihao	m|ihao	1	backspace	ihao	0	mhao
+target_boundary_between_m_i	mihao	mihao	1	none	mihao	1
+tap_before_start_clamps	mihao	mihao	-8	none	mihao	0
+tap_after_end_clamps	mihao	mihao	99	none	mihao	5
+backspace_after_end	mihao	mihao|	5	backspace	miha	4
+backspace_raw_after_g_boundary	mangao	mang|ao	4	backspace	manao	3	mango
+insert_raw_after_g_boundary	mangao	mang|ao	4	insert:x	mangxao	5
+backspace_raw_beginning	mangao	|mangao	0	backspace	mangao	0
+backspace_raw_before_g_boundary	mangao	man|gao	3	backspace	magao	2	mangao
+raw_before_g_boundary	mangao	man|gao	3	none	mangao	3
+raw_after_g_boundary	mangao	mang|ao	4	none	mangao	4
+user_separator_before_boundary	man'gao	man|'gao	3	none	man'gao	3
+user_separator_after_boundary	man'gao	man'|gao	4	none	man'gao	4
+user_separator_before_boundary_backspace	man'gao	man|'gao	3	backspace	ma'gao	2	mangao
+user_separator_after_boundary_backspace	man'gao	man'|gao	4	backspace	mangao	3	man'gao

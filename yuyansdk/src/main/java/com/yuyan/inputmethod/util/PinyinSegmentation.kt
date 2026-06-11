@@ -3,6 +3,15 @@ package com.yuyan.inputmethod.util
 import java.util.Locale
 
 object PinyinSegmentation {
+    data class SyllableChoice(
+        val syllable: String,
+        val sourceLength: Int,
+        val isCorrection: Boolean = false
+    ) {
+        val label: String
+            get() = if (isCorrection) "$syllable*" else syllable
+    }
+
     private val syllables = setOf(
         "a", "ai", "an", "ang", "ao",
         "ba", "bai", "ban", "bang", "bao", "bei", "ben", "beng", "bi", "bian", "biao", "bie", "bin", "bing", "bo", "bu",
@@ -31,6 +40,86 @@ object PinyinSegmentation {
 
     fun segmentations(raw: String): List<String> {
         val normalized = normalizeInput(raw) ?: return emptyList()
+        val distinctChoices = splitAll(normalized)
+            .map { it.joinToString("'") }
+            .distinct()
+            .sorted()
+        return if (distinctChoices.size <= 1) emptyList() else distinctChoices
+    }
+
+    fun currentStepChoices(raw: String, consumedLength: Int = 0, maxChoices: Int = 8): List<SyllableChoice> {
+        val normalized = normalizeInput(raw) ?: return emptyList()
+        val start = consumedLength.coerceIn(0, normalized.length)
+        val remaining = normalized.substring(start)
+        if (remaining.isEmpty()) return emptyList()
+
+        val exact = syllables
+            .filter { syllable -> remaining.startsWith(syllable) && hasSegmentableTail(remaining.substring(syllable.length)) }
+            .map { syllable -> SyllableChoice(syllable, syllable.length, isCorrection = false) }
+            .sortedWith(compareBy<SyllableChoice> { it.sourceLength }.thenBy { it.syllable })
+
+        val exactSyllables = exact.map { it.syllable }.toSet()
+        val correction = if (exact.size == 1) {
+            emptyList()
+        } else {
+            syllables
+                .asSequence()
+                .flatMap { syllable ->
+                    ((syllable.length - 1)..(syllable.length + 1)).asSequence().map { sourceLength ->
+                        syllable to sourceLength
+                    }
+                }
+                .filter { (_, sourceLength) -> sourceLength > 0 && sourceLength <= remaining.length }
+                .filter { (syllable, _) -> syllable !in exactSyllables }
+                .filter { (syllable, sourceLength) -> hasSegmentableTail(remaining.substring(sourceLength)) && editDistanceAtMostOne(remaining.substring(0, sourceLength), syllable) }
+                .map { (syllable, sourceLength) -> SyllableChoice(syllable, sourceLength, isCorrection = true) }
+                .distinctBy { it.syllable to it.sourceLength }
+                .sortedBy { it.syllable }
+                .toList()
+        }
+
+        return (exact + correction)
+            .distinctBy { it.label }
+            .take(maxChoices)
+    }
+
+    fun hasSegmentableTail(raw: String): Boolean {
+        val normalized = normalizeInput(raw) ?: return raw.isEmpty()
+        return splitAll(normalized).isNotEmpty()
+    }
+
+    fun editDistanceAtMostOne(left: String, right: String): Boolean {
+        if (left == right) return true
+        if (kotlin.math.abs(left.length - right.length) > 1) return false
+        var leftIndex = 0
+        var rightIndex = 0
+        var edits = 0
+        while (leftIndex < left.length || rightIndex < right.length) {
+            if (leftIndex < left.length && rightIndex < right.length && left[leftIndex] == right[rightIndex]) {
+                leftIndex += 1
+                rightIndex += 1
+                continue
+            }
+            edits += 1
+            if (edits > 1) return false
+            when {
+                left.length > right.length -> leftIndex += 1
+                right.length > left.length -> rightIndex += 1
+                else -> {
+                    leftIndex += 1
+                    rightIndex += 1
+                }
+            }
+        }
+        return true
+    }
+
+    fun normalizeInput(raw: String): String? {
+        val normalized = raw.replace("'", "").lowercase(Locale.ROOT)
+        return normalized.takeIf { it.isNotEmpty() && it.all { char -> char in 'a'..'z' } }
+    }
+
+    private fun splitAll(normalized: String): List<List<String>> {
         val memo = HashMap<Int, List<List<String>>>()
 
         fun splitFrom(index: Int): List<List<String>> {
@@ -48,15 +137,6 @@ object PinyinSegmentation {
             return result
         }
 
-        val distinctChoices = splitFrom(0)
-            .map { it.joinToString("'") }
-            .distinct()
-            .sorted()
-        return if (distinctChoices.size <= 1) emptyList() else distinctChoices
-    }
-
-    fun normalizeInput(raw: String): String? {
-        val normalized = raw.replace("'", "").lowercase(Locale.ROOT)
-        return normalized.takeIf { it.isNotEmpty() && it.all { char -> char in 'a'..'z' } }
+        return splitFrom(0)
     }
 }

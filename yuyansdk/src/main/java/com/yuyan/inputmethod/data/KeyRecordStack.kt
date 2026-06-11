@@ -29,7 +29,7 @@ class KeyRecordStack {
         val lastKey = keyRecords.lastOrNull()
         if (lastKey is InputKey.Apostrophe && keyRecords.size == 1) {
             processDelAction()
-        }else if (keyCode == KeyEvent.KEYCODE_APOSTROPHE) {
+        }else if (keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON) {
             // 连续分词没有意义
             if (lastKey is InputKey.Apostrophe) return false
             // 选择拼音之后分词没有意义，但是需要把分词操作入栈
@@ -43,7 +43,7 @@ class KeyRecordStack {
             keyRecords.removeLastOrNull()
         }
         when (keyCode) {
-            KeyEvent.KEYCODE_APOSTROPHE -> {
+            KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.KEYCODE_SEMICOLON -> {
                 keyRecords.add(InputKey.Apostrophe())
             }
             in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z -> {

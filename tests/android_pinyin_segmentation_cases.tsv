@@ -1,6 +1,7 @@
-name	mode	raw	expected_choices	expected_active	selected_index	expected_selected	expected_visible
-ambiguous_qwerty_mangao	full_pinyin	mangao	man'gao,mang'ao	0	1	mang'ao	true
-single_qwerty_nihao	full_pinyin	nihao		-1	-1		false
-existing_apostrophe_mangao	full_pinyin	mang'ao	man'gao,mang'ao	1	0	man'gao	true
-invalid_qwerty_digit	full_pinyin	man2gao		-1	-1		false
-unsupported_t9_mangao	t9	mangao		-1	-1		false
+name	mode	raw	confirmed	expected_choices	expected_display_choices	expected_active	selected_index	expected_selected	expected_query	expected_visible_raw	expected_context	expected_visible
+step_first_mangao	full_pinyin	mangao		man,mang,min*,ming*	[man]'gao,[mang]'ao,[min*]'gao,[ming*]'ao	0	0	man	man'gao	mangao	man'	true
+step_first_mingao_correction	full_pinyin	mingao		min,ming,man*,mang*,mi*	[min]'gao,[ming]'ao,[man*]'gao,[mang*]'ao,[mi*]'gao	0	2	man*	man'gao	mingao	man'	true
+step_confirmed_man_remaining	full_pinyin	mangao	man	gao	man'[gao]	0	0	gao	man'gao	mangao	man'gao	true
+single_qwerty_nihao	full_pinyin	nihao	ni	hao	ni'[hao]	0	0	hao	ni'hao	nihao	ni'hao	true
+invalid_qwerty_digit	full_pinyin	man2gao				-1	-1			false
+unsupported_t9_mangao	t9	mangao				-1	-1			false

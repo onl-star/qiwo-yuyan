@@ -6,6 +6,7 @@ import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupWindow
@@ -13,11 +14,16 @@ import kotlin.math.max
 
 class CompositionCaretMagnifier(private val context: Context) {
 
+    private var onCaretChanged: ((Int) -> Int?)? = null
+
     private val preview = CompositionCaretTextView(context).apply {
         includeFontPadding = false
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(16), 0, dp(16), 0)
         setBackgroundColor(Color.WHITE)
+        setOnTouchListener { _, event ->
+            handlePreviewTouch(event)
+        }
     }
     private val popupWindow = PopupWindow(
         preview,
@@ -30,6 +36,10 @@ class CompositionCaretMagnifier(private val context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             elevation = dp(6).toFloat()
         }
+    }
+
+    fun setOnCaretChanged(listener: ((Int) -> Int?)?) {
+        onCaretChanged = listener
     }
 
     fun show(anchor: CompositionCaretTextView, text: String, caret: Int?, x: Float, y: Float) {
@@ -62,9 +72,17 @@ class CompositionCaretMagnifier(private val context: Context) {
             return null
         }
         val boundary = anchor.resolveCaretBoundary(x, y)
-        dismiss()
+        if (!popupWindow.isShowing) {
+            show(anchor, text, boundary, x, y)
+        } else {
+            updatePreview(anchor, text, boundary, x, y)
+            popupWindow.update(anchor, 0, -anchor.height - popupWindow.height, popupWindow.width, popupWindow.height)
+        }
         return boundary
     }
+
+    val isShowing: Boolean
+        get() = popupWindow.isShowing
 
     fun dismiss() {
         if (popupWindow.isShowing) {
@@ -72,10 +90,24 @@ class CompositionCaretMagnifier(private val context: Context) {
         }
     }
 
+    private fun handlePreviewTouch(event: MotionEvent): Boolean {
+        if (preview.text.isNullOrEmpty()) return false
+        return when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP -> {
+                val rawCaret = preview.resolveCaretBoundary(event.x, event.y)
+                val canonicalCaret = onCaretChanged?.invoke(rawCaret) ?: rawCaret
+                preview.setComposition(preview.text.toString(), canonicalCaret)
+                true
+            }
+            MotionEvent.ACTION_CANCEL -> true
+            else -> false
+        }
+    }
+
     private fun updatePreview(anchor: CompositionCaretTextView, text: String, caret: Int?, x: Float, y: Float) {
         preview.setTextColor(anchor.currentTextColor)
         preview.setTextSize(TypedValue.COMPLEX_UNIT_PX, anchor.textSize * 1.6f)
-        preview.setComposition(text, anchor.resolveCaretBoundary(x, y).takeIf { text.isNotEmpty() } ?: caret)
+        preview.setComposition(text, caret ?: anchor.resolveCaretBoundary(x, y))
     }
 
     private fun dp(value: Int): Int {

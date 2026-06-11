@@ -84,6 +84,9 @@ object DecodingInfo {
     val compositionTextForDisplay: String
         get() = Kernel.compositionTextForDisplay
 
+    val compositionTextForCaretDisplay: String
+        get() = Kernel.compositionTextForCaretDisplay
+
     val composingStrForCommit: String   // 获取输入的拼音字符串
         get() = Kernel.wordsShowPinyin.replace("'", "").ifEmpty { getCandidate(0)?.text?:""}
 
@@ -113,8 +116,14 @@ object DecodingInfo {
     val pinyinSegmentationChoices: Array<String>
         get() = Kernel.pinyinSegmentationChoices
 
+    val pinyinSegmentationDisplayChoices: Array<String>
+        get() = Kernel.pinyinSegmentationDisplayChoices
+
     val activePinyinSegmentationIndex: Int
         get() = Kernel.activePinyinSegmentationIndex
+
+    val pinyinSegmentationContextLabel: String
+        get() = Kernel.pinyinSegmentationContextLabel
 
     fun selectPinyinSegmentation(position: Int): Boolean {
         activeCandidate = 0

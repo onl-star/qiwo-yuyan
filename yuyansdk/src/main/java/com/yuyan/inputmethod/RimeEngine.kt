@@ -23,8 +23,19 @@ object RimeEngine {
     var showCandidates: List<CandidateListItem> = emptyList() // 所有待展示的候选词
     var showComposition: String = "" // 候选词上方展示的拼音
     var preCommitText: String = "" // 待提交的文字
+    private var compositionCaretActive = false
     private var compositionCaret: Int? = null
     private var rawPinyinComposition: String = ""
+    private data class ConfirmedPinyinSyllable(
+        val syllable: String,
+        val sourceText: String,
+        val sourceLength: Int,
+        val isCorrection: Boolean
+    )
+    private var confirmedPinyinSyllables: List<ConfirmedPinyinSyllable> = emptyList()
+    private var visibleRawPinyinComposition: String = ""
+    private var internalPinyinQuery: String = ""
+    private var pinyinSegmentationStepChoices: List<PinyinSegmentation.SyllableChoice> = emptyList()
     private var pinyinSegmentationChoices: List<String> = emptyList()
     private var activePinyinSegmentationIndex: Int = -1
     private var customPhraseSize: Int = 0 // 自定义引擎候选词长度
@@ -51,18 +62,20 @@ object RimeEngine {
      * 是否输入完毕
      */
     fun isFinish(): Boolean {
-        return keyRecordStack.isEmpty()
+        return keyRecordStack.isEmpty() && !Rime.isComposing
     }
 
     fun onNormalKey(event: KeyEvent) {
+        restoreVisibleRawPinyinCompositionIfNeeded()
         val keyCode = event.keyCode
-        val keyChar = if(keyCode == KeyEvent.KEYCODE_APOSTROPHE) if(isFinish()) '/'.code else '\''.code
+        val keyChar = if(keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON) if(isFinish()) '/'.code else '\''.code
             else event.unicodeChar
         if (keyRecordStack.pushKey(event))Rime.processKey(keyChar, event.action)
         updateCandidatesOrCommitText()
     }
 
     fun onDeleteKey() {
+        restoreVisibleRawPinyinCompositionIfNeeded()
         processDelAction()
         updateCandidatesOrCommitText()
     }
@@ -101,12 +114,12 @@ object RimeEngine {
 
     fun isFullKeyboardPinyinCompositionEditable(): Boolean {
         val schema = Rime.getCurrentRimeSchema()
-        return (schema == CustomConstant.SCHEMA_ZH_QWERTY || schema == CustomConstant.SCHEMA_FROST) &&
+        return isFullKeyboardPinyinSchema(schema) &&
                 Rime.compositionText.isNotEmpty()
     }
 
     fun isCompositionCaretActive(): Boolean {
-        return compositionCaret != null && isFullKeyboardPinyinCompositionEditable()
+        return compositionCaretActive && compositionCaret != null && isFullKeyboardPinyinCompositionEditable()
     }
 
     fun isCompositionEditingAvailable(): Boolean {
@@ -123,33 +136,57 @@ object RimeEngine {
         return pinyinSegmentationChoices.toTypedArray()
     }
 
+    fun pinyinSegmentationDisplayChoices(): Array<String> {
+        refreshPinyinSegmentation()
+        return pinyinSegmentationStepChoices.map { pinyinSegmentationDisplayLabel(it) }.toTypedArray()
+    }
+
     fun activePinyinSegmentationIndex(): Int {
         refreshPinyinSegmentation()
         return activePinyinSegmentationIndex
     }
 
+    fun pinyinSegmentationContextLabel(): String {
+        refreshPinyinSegmentation()
+        return if (confirmedPinyinSyllables.isEmpty()) {
+            ""
+        } else {
+            confirmedPinyinSyllables.joinToString("'") { it.syllable } + "'"
+        }
+    }
+
     fun selectPinyinSegmentation(index: Int): Boolean {
         refreshPinyinSegmentation()
-        val selected = pinyinSegmentationChoices.getOrNull(index) ?: return false
+        val selected = pinyinSegmentationStepChoices.getOrNull(index) ?: return false
         if (!isFullKeyboardPinyinCompositionEditable()) {
             clearPinyinSegmentation()
             return false
         }
+        val visibleRaw = normalizedVisibleRawComposition() ?: return false
+        val consumedLength = confirmedPinyinSyllables.sumOf { it.sourceLength }
+        val sourceText = visibleRaw.substring(consumedLength, (consumedLength + selected.sourceLength).coerceAtMost(visibleRaw.length))
+        confirmedPinyinSyllables = confirmedPinyinSyllables + ConfirmedPinyinSyllable(
+            syllable = selected.syllable,
+            sourceText = sourceText,
+            sourceLength = selected.sourceLength,
+            isCorrection = selected.isCorrection
+        )
+        visibleRawPinyinComposition = visibleRaw
+        internalPinyinQuery = buildInternalPinyinQuery(visibleRaw)
         val currentComposition = Rime.compositionText
-        val replaced = if (currentComposition == selected) {
-            true
-        } else {
-            Rime.replaceKey(0, currentComposition.length, selected)
-        }
+        val replaced = Rime.replaceKey(0, currentComposition.length, internalPinyinQuery)
         if (!replaced) return false
         updateCandidatesOrCommitText()
         refreshPinyinSegmentation()
-        activePinyinSegmentationIndex = pinyinSegmentationChoices.indexOf(selected)
         return true
     }
 
     fun clearPinyinSegmentation() {
         rawPinyinComposition = ""
+        confirmedPinyinSyllables = emptyList()
+        visibleRawPinyinComposition = ""
+        internalPinyinQuery = ""
+        pinyinSegmentationStepChoices = emptyList()
         pinyinSegmentationChoices = emptyList()
         activePinyinSegmentationIndex = -1
     }
@@ -159,29 +196,101 @@ object RimeEngine {
             clearPinyinSegmentation()
             return
         }
-        val rawComposition = PinyinSegmentation.normalizeInput(Rime.compositionText) ?: run {
+        val rawComposition = normalizedVisibleRawComposition() ?: run {
             clearPinyinSegmentation()
             return
         }
-        val previousChoice = pinyinSegmentationChoices.getOrNull(activePinyinSegmentationIndex)
-        val choices = PinyinSegmentation.segmentations(rawComposition)
+        trimConfirmedPinyinToVisibleRaw(rawComposition)
+        val consumedLength = confirmedPinyinSyllables.sumOf { it.sourceLength }
+        val choices = PinyinSegmentation.currentStepChoices(rawComposition, consumedLength)
         if (choices.isEmpty()) {
+            pinyinSegmentationStepChoices = emptyList()
+            pinyinSegmentationChoices = emptyList()
+            activePinyinSegmentationIndex = -1
+            rawPinyinComposition = rawComposition
+            return
+        }
+        if (confirmedPinyinSyllables.isEmpty() && choices.size <= 1) {
             clearPinyinSegmentation()
             rawPinyinComposition = rawComposition
             return
         }
-        val currentSegmented = Rime.compositionText.lowercase(Locale.ROOT)
-        var nextActiveIndex = choices.indexOf(currentSegmented)
-        if (nextActiveIndex < 0 && rawComposition == rawPinyinComposition && previousChoice != null && previousChoice in choices) {
-            nextActiveIndex = choices.indexOf(previousChoice)
-        }
         rawPinyinComposition = rawComposition
-        pinyinSegmentationChoices = choices
-        activePinyinSegmentationIndex = if (nextActiveIndex >= 0) nextActiveIndex else 0
+        pinyinSegmentationStepChoices = choices
+        pinyinSegmentationChoices = choices.map { it.label }
+        activePinyinSegmentationIndex = 0
+    }
+
+    private fun normalizedVisibleRawComposition(): String? {
+        val visibleRaw = visibleRawPinyinComposition.takeIf { it.isNotEmpty() } ?: Rime.compositionText
+        return PinyinSegmentation.normalizeInput(visibleRaw)
+    }
+
+    private fun trimConfirmedPinyinToVisibleRaw(rawComposition: String) {
+        if (confirmedPinyinSyllables.isEmpty()) return
+        val kept = mutableListOf<ConfirmedPinyinSyllable>()
+        var consumedLength = 0
+        for (confirmed in confirmedPinyinSyllables) {
+            val end = consumedLength + confirmed.sourceLength
+            if (end > rawComposition.length) break
+            if (rawComposition.substring(consumedLength, end) != confirmed.sourceText) break
+            kept.add(confirmed)
+            consumedLength = end
+        }
+        if (kept.size != confirmedPinyinSyllables.size) {
+            confirmedPinyinSyllables = kept
+            if (kept.isEmpty()) {
+                visibleRawPinyinComposition = ""
+                internalPinyinQuery = ""
+            }
+        }
+    }
+
+    private fun buildInternalPinyinQuery(visibleRaw: String): String {
+        val consumedLength = confirmedPinyinSyllables.sumOf { it.sourceLength }
+        val confirmedQuery = confirmedPinyinSyllables.joinToString("'") { it.syllable }
+        val remaining = visibleRaw.drop(consumedLength)
+        return listOf(confirmedQuery, remaining)
+            .filter { it.isNotEmpty() }
+            .joinToString("'")
+    }
+
+    private fun pinyinSegmentationDisplayLabel(choice: PinyinSegmentation.SyllableChoice): String {
+        val visibleRaw = normalizedVisibleRawComposition().orEmpty()
+        val consumedLength = confirmedPinyinSyllables.sumOf { it.sourceLength }
+        val confirmedPrefix = confirmedPinyinSyllables
+            .joinToString("'") { it.syllable }
+            .takeIf { it.isNotEmpty() }
+            ?.let { "$it'" }
+            .orEmpty()
+        val remaining = visibleRaw.drop(consumedLength + choice.sourceLength)
+        return buildString {
+            append(confirmedPrefix)
+            append('[')
+            append(choice.label)
+            append(']')
+            if (remaining.isNotEmpty()) {
+                append('\'')
+                append(remaining)
+            }
+        }
+    }
+
+    private fun restoreVisibleRawPinyinCompositionIfNeeded() {
+        val visibleRaw = visibleRawPinyinComposition.takeIf { it.isNotEmpty() } ?: return
+        if (Rime.compositionText != visibleRaw) {
+            Rime.replaceKey(0, Rime.compositionText.length, visibleRaw)
+            showComposition = visibleRaw
+        }
+        clearPinyinSegmentation()
     }
 
     fun compositionTextForEditing(): String {
         return if (isFullKeyboardPinyinCompositionEditable()) showComposition else ""
+    }
+
+    fun compositionTextForCaretDisplay(): String {
+        return compositionTextForEditing()
     }
 
     fun compositionCaretBoundary(): Int? {
@@ -196,18 +305,24 @@ object RimeEngine {
             clearCompositionCaret()
             return false
         }
-        compositionCaret = clampCompositionCaret(caret)
+        val composition = compositionTextForEditing()
+        if (composition.isEmpty()) {
+            clearCompositionCaret()
+            return false
+        }
+        compositionCaret = caret.coerceIn(0, composition.length)
+        compositionCaretActive = true
         return true
     }
 
     fun clearCompositionCaret() {
+        compositionCaretActive = false
         compositionCaret = null
     }
 
     fun compositionTextForDisplay(): String {
-        val composition = showComposition
-        val caret = compositionCaret
-        if (caret == null || composition.isEmpty() || !isFullKeyboardPinyinCompositionEditable()) return composition
+        val composition = compositionTextForEditing()
+        if (composition.isEmpty() || !isCompositionCaretActive()) return composition
         val displayCaret = compositionCaretBoundary() ?: return composition
         return composition.substring(0, displayCaret) + "|" + composition.substring(displayCaret)
     }
@@ -243,9 +358,14 @@ object RimeEngine {
     private fun syncCompositionCaretAfterEdit(preferredCaret: Int) {
         if (isFullKeyboardPinyinCompositionEditable()) {
             compositionCaret = clampCompositionCaret(preferredCaret)
+            compositionCaretActive = true
         } else {
             clearCompositionCaret()
         }
+    }
+
+    private fun isFullKeyboardPinyinSchema(schema: String): Boolean {
+        return schema == CustomConstant.SCHEMA_ZH_QWERTY || schema == CustomConstant.SCHEMA_FROST
     }
 
     fun selectPinyin(index: Int) {

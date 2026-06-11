@@ -65,8 +65,14 @@ object Kernel {
     val pinyinSegmentationChoices: Array<String>
         get() = RimeEngine.pinyinSegmentationChoices()
 
+    val pinyinSegmentationDisplayChoices: Array<String>
+        get() = RimeEngine.pinyinSegmentationDisplayChoices()
+
     val activePinyinSegmentationIndex: Int
         get() = RimeEngine.activePinyinSegmentationIndex()
+
+    val pinyinSegmentationContextLabel: String
+        get() = RimeEngine.pinyinSegmentationContextLabel()
 
     fun selectPinyinSegmentation(index: Int): Boolean {
         return RimeEngine.selectPinyinSegmentation(index)
@@ -82,6 +88,9 @@ object Kernel {
 
     val compositionTextForDisplay: String
         get() = RimeEngine.compositionTextForDisplay()
+
+    val compositionTextForCaretDisplay: String
+        get() = RimeEngine.compositionTextForCaretDisplay()
 
     val compositionTextForEditing: String
         get() = RimeEngine.compositionTextForEditing()

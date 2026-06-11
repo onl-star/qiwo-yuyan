@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.util.AttributeSet
+import android.view.Gravity
 import android.widget.TextView
 
 class CompositionCaretTextView @JvmOverloads constructor(
@@ -17,6 +18,11 @@ class CompositionCaretTextView @JvmOverloads constructor(
     }
     private var compositionText: String = ""
     private var caretBoundary: Int? = null
+
+    init {
+        setHorizontallyScrolling(true)
+        maxLines = 1
+    }
 
     fun setComposition(text: String, caret: Int?) {
         compositionText = text
@@ -38,10 +44,21 @@ class CompositionCaretTextView @JvmOverloads constructor(
         if (compositionText.isEmpty()) return
         val layout = layout ?: return
         val line = layout.getLineForOffset(boundary)
-        val caretX = totalPaddingLeft + layout.getPrimaryHorizontal(boundary)
-        val top = extendedPaddingTop + layout.getLineTop(line).toFloat()
-        val bottom = extendedPaddingTop + layout.getLineBottom(line).toFloat()
+        val caretX = compoundPaddingLeft + layout.getPrimaryHorizontal(boundary)
+        val textLayoutTop = compoundPaddingTop + verticalTextOffset(layout.height)
+        val top = textLayoutTop + layout.getLineTop(line).toFloat()
+        val bottom = textLayoutTop + layout.getLineBottom(line).toFloat()
         caretPaint.color = currentTextColor
         canvas.drawLine(caretX, top, caretX, bottom, caretPaint)
+    }
+
+    private fun verticalTextOffset(textHeight: Int): Float {
+        val availableHeight = height - compoundPaddingTop - compoundPaddingBottom
+        if (availableHeight <= textHeight) return 0f
+        return when (gravity and Gravity.VERTICAL_GRAVITY_MASK) {
+            Gravity.CENTER_VERTICAL -> (availableHeight - textHeight) / 2f
+            Gravity.BOTTOM -> (availableHeight - textHeight).toFloat()
+            else -> 0f
+        }
     }
 }

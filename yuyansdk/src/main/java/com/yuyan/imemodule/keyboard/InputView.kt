@@ -479,7 +479,8 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
             }
             (Character.isLetterOrDigit(keyChar) && keyCode != KeyEvent.KEYCODE_0) || keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON -> {
                 textBeforeCursors.clear()
-                if (!Character.isLetter(keyChar) || !DecodingInfo.insertCompositionAtCaret(label)) {
+                val compositionInsertLabel = if (keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON) "'" else label
+                if (!compositionInsertLabel.first().isLetterOrSeparator() || !DecodingInfo.insertCompositionAtCaret(compositionInsertLabel)) {
                     DecodingInfo.inputAction(event)
                 }
                 updateCandidate()
@@ -501,12 +502,14 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
     }
 
     fun resetToIdleState() {
+        dismissCompositionMagnifier()
         DecodingInfo.clearCompositionCaret()
         resetCandidateWindow()
         if (hasSelectionAll) hasSelectionAll = false
     }
 
     fun chooseAndUpdate(candId: Int = mSkbCandidatesBarView.getActiveCandNo()) {
+        dismissCompositionMagnifier()
         val candidate = DecodingInfo.getCandidate(candId)
         if (candidate?.comment == "📋") {
             commitDecInfoText(candidate.text)
@@ -540,9 +543,18 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
     fun updateCandidateBar() = mSkbCandidatesBarView.scheduleShowCandidates()
 
     private fun resetCandidateWindow() {
+        dismissCompositionMagnifier()
         DecodingInfo.clearCompositionCaret()
         DecodingInfo.reset()
         (KeyboardManager.instance.currentContainer as? T9TextContainer)?.updateSymbolListView()
+    }
+
+    private fun dismissCompositionMagnifier() {
+        mSkbCandidatesBarView.dismissCompositionMagnifier()
+    }
+
+    private fun Char.isLetterOrSeparator(): Boolean {
+        return isLetter() || this == '\''
     }
 
     inner class ChoiceNotifier internal constructor() : CandidateViewListener {
@@ -563,6 +575,7 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
         }
 
         override fun onClickMore(level: Int) {
+            dismissCompositionMagnifier()
             if (level == 0) {
                 onSettingsMenuClick(SkbMenuMode.CandidatesMore)
             } else {
@@ -571,7 +584,10 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
             }
         }
 
-        override fun onClickMenu(skbMenuMode: SkbMenuMode) = onSettingsMenuClick(skbMenuMode)
+        override fun onClickMenu(skbMenuMode: SkbMenuMode) {
+            dismissCompositionMagnifier()
+            onSettingsMenuClick(skbMenuMode)
+        }
 
         override fun onClickClearCandidate() {
             resetToIdleState()

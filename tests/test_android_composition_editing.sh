@@ -15,6 +15,8 @@ input_view_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/keyboard/Input
 candidate_view_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/candidate/CandidateView.kt"
 behavior_cases_file="$root/tests/android_composition_editing_cases.tsv"
 boundary_cases_file="$root/tests/android_composition_boundary_cases.tsv"
+composition_mapping_file="$root/yuyansdk/src/main/java/com/yuyan/inputmethod/util/CompositionEditMapping.kt"
+hidden_separator_cases_file="$root/tests/android_composition_hidden_separator_cases.tsv"
 
 for file in "$rime_engine_file" "$kernel_file" "$decoding_file" "$listener_file" "$soft_bar_file" "$float_bar_file" "$composition_text_view_file" "$composition_magnifier_file" "$input_view_file" "$candidate_view_file"; do
   [[ -f "$file" ]] || {
@@ -23,54 +25,76 @@ for file in "$rime_engine_file" "$kernel_file" "$decoding_file" "$listener_file"
   }
 done
 
-grep -q 'compositionCaret' "$rime_engine_file" || {
-  echo "RimeEngine must own compositionCaret state" >&2
+[[ ! -f "$composition_mapping_file" ]] || {
+  echo "CompositionEditMapping belongs to the reverted hidden-segmentation edit path" >&2
   exit 1
 }
 
-grep -q 'isFullKeyboardPinyinCompositionEditable' "$rime_engine_file" || {
-  echo "RimeEngine must gate editing to full-keyboard Pinyin composition" >&2
+[[ ! -f "$hidden_separator_cases_file" ]] || {
+  echo "Hidden separator cases belong to the reverted edit path" >&2
   exit 1
 }
 
-grep -q 'SCHEMA_ZH_QWERTY' "$rime_engine_file" || {
-  echo "RimeEngine full-keyboard gate must include legacy qwerty Pinyin schema" >&2
+grep -q 'private var compositionCaret: Int?' "$rime_engine_file" || {
+  echo "RimeEngine must use a simple Android-owned composition caret" >&2
   exit 1
 }
 
-grep -q 'SCHEMA_FROST' "$rime_engine_file" || {
-  echo "RimeEngine full-keyboard gate must include Qiwo frost full Pinyin schema" >&2
+grep -q 'compositionCaretActive' "$rime_engine_file" || {
+  echo "RimeEngine must track active composition editing state" >&2
   exit 1
 }
 
-if grep -Eq 'SCHEMA_ZH_T9|SCHEMA_FROST_T9|SCHEMA_ZH_DOUBLE_LX17|SCHEMA_FROST_DOUBLE_PREFIX|SCHEMA_ZH_STROKE|SCHEMA_ZH_HANDWRITING' "$rime_engine_file"; then
-  grep -q 'isFullKeyboardPinyinCompositionEditable' "$rime_engine_file" || {
-    echo "Unsupported schema references must remain outside composition editing enablement" >&2
+for forbidden in CompositionEditMapping compositionCaretFallback compositionCaretRimeBacked replaceCompositionWithEditableText logicalSeparatorTransparentComposition 'Rime.compositionCaret' 'Rime.setCompositionCaret'; do
+  if grep -q "$forbidden" "$rime_engine_file"; then
+    echo "RimeEngine must not use reverted composition editing path: $forbidden" >&2
+    exit 1
+  fi
+done
+
+grep -q 'QwertyPinYinUtils.getQwertyComposition' "$rime_engine_file" || {
+  echo "RimeEngine must keep the pre-rework qwerty composition display path" >&2
+  exit 1
+}
+
+for symbol in isFullKeyboardPinyinCompositionEditable setCompositionCaret clearCompositionCaret insertCompositionAtCaret deleteCompositionBeforeCaret compositionTextForDisplay compositionTextForCaretDisplay compositionTextForEditing compositionCaretBoundary; do
+  grep -q "$symbol" "$rime_engine_file" || {
+    echo "RimeEngine must expose $symbol" >&2
     exit 1
   }
-fi
+done
 
-grep -q 'insertCompositionAtCaret' "$rime_engine_file" || {
-  echo "RimeEngine must expose insertion at composition caret" >&2
+for symbol in SCHEMA_ZH_QWERTY SCHEMA_FROST; do
+  grep -q "$symbol" "$rime_engine_file" || {
+    echo "RimeEngine full-keyboard gate must include $symbol" >&2
+    exit 1
+  }
+done
+
+awk '
+  /fun insertCompositionAtCaret\(/ { in_func = 1 }
+  in_func && /Rime\.replaceKey\(caret, 0, key\)/ { found = 1 }
+  in_func && /replaceCompositionWithEditableText|CompositionEditMapping|Rime\.setCompositionCaret|Rime\.processKey/ { exit 1 }
+  in_func && /^    fun / && !/fun insertCompositionAtCaret\(/ { in_func = 0 }
+  END { exit found ? 0 : 1 }
+' "$rime_engine_file" || {
+  echo "RimeEngine.insertCompositionAtCaret must use the simple caret replace path" >&2
   exit 1
 }
 
-grep -q 'deleteCompositionBeforeCaret' "$rime_engine_file" || {
-  echo "RimeEngine must expose deletion before composition caret" >&2
+awk '
+  /fun deleteCompositionBeforeCaret\(/ { in_func = 1 }
+  in_func && /if \(caret <= 0\) return true/ { guarded = 1 }
+  in_func && /Rime\.replaceKey\(deleteIndex, 1, ""\)/ { replaced = 1 }
+  in_func && /replaceCompositionWithEditableText|CompositionEditMapping|Rime\.setCompositionCaret|Rime\.processKey/ { exit 1 }
+  in_func && /^    private fun / { in_func = 0 }
+  END { exit guarded && replaced ? 0 : 1 }
+' "$rime_engine_file" || {
+  echo "RimeEngine.deleteCompositionBeforeCaret must consume beginning-of-composition deletes without falling back or getting stuck" >&2
   exit 1
 }
 
-grep -Eq 'Rime\.replaceKey\(.*0, key' "$rime_engine_file" || {
-  echo "Caret insertion must use Rime.replaceKey(caret, 0, key)" >&2
-  exit 1
-}
-
-grep -Eq 'Rime\.replaceKey\(.*1, ""' "$rime_engine_file" || {
-  echo "Caret backspace must use Rime.replaceKey(caret - 1, 1, empty replacement)" >&2
-  exit 1
-}
-
-for symbol in setCompositionCaret clearCompositionCaret insertCompositionAtCaret deleteCompositionBeforeCaret compositionTextForDisplay; do
+for symbol in setCompositionCaret clearCompositionCaret insertCompositionAtCaret deleteCompositionBeforeCaret compositionTextForDisplay compositionTextForCaretDisplay compositionTextForEditing compositionCaretBoundary isCompositionEditingAvailable; do
   grep -q "$symbol" "$kernel_file" || {
     echo "Kernel must expose $symbol pass-through" >&2
     exit 1
@@ -81,44 +105,41 @@ for symbol in setCompositionCaret clearCompositionCaret insertCompositionAtCaret
   }
 done
 
-for symbol in isCompositionEditingAvailable compositionTextForEditing compositionCaretBoundary; do
-  grep -q "$symbol" "$rime_engine_file" || {
-    echo "RimeEngine must expose read-only $symbol" >&2
-    exit 1
-  }
-  grep -q "$symbol" "$kernel_file" || {
-    echo "Kernel must expose read-only $symbol pass-through" >&2
-    exit 1
-  }
-  grep -q "$symbol" "$decoding_file" || {
-    echo "DecodingInfo must expose read-only $symbol" >&2
-    exit 1
-  }
-done
-
 grep -q 'class CompositionCaretTextView' "$composition_text_view_file" || {
-  echo "CompositionCaretTextView must define the shared composition caret text view" >&2
+  echo "CompositionCaretTextView must keep the inline composition caret view" >&2
   exit 1
 }
 
-for symbol in setComposition resolveCaretBoundary onDraw drawLine; do
+for symbol in setComposition resolveCaretBoundary onDraw drawLine setHorizontallyScrolling textLayoutTop verticalTextOffset; do
   grep -q "$symbol" "$composition_text_view_file" || {
-    echo "CompositionCaretTextView must implement $symbol" >&2
+    echo "CompositionCaretTextView must keep same-line caret rendering via $symbol" >&2
     exit 1
   }
 done
 
 grep -q 'class CompositionCaretMagnifier' "$composition_magnifier_file" || {
-  echo "CompositionCaretMagnifier must define the enlarged composition affordance" >&2
+  echo "CompositionCaretMagnifier must define the enlarged editing affordance" >&2
   exit 1
 }
 
-for symbol in PopupWindow show update dismiss finalizeCaret; do
+for symbol in PopupWindow show update dismiss finalizeCaret isShowing setOnCaretChanged handlePreviewTouch canonicalCaret; do
   grep -q "$symbol" "$composition_magnifier_file" || {
-    echo "CompositionCaretMagnifier must implement $symbol" >&2
+    echo "CompositionCaretMagnifier must keep persistent popup editing support through $symbol" >&2
     exit 1
   }
 done
+
+awk '
+  /fun finalizeCaret/ { in_func = 1 }
+  in_func && /updatePreview/ { updated = 1 }
+  in_func && /val boundary = anchor\.resolveCaretBoundary/ { saw_boundary = 1 }
+  in_func && saw_boundary && /dismiss\(\)/ { exit 1 }
+  in_func && /^    val / { in_func = 0 }
+  END { exit updated ? 0 : 1 }
+' "$composition_magnifier_file" || {
+  echo "CompositionCaretMagnifier.finalizeCaret must keep the popup open after finger up" >&2
+  exit 1
+}
 
 grep -q 'onClickCompositionCaret' "$listener_file" || {
   echo "CandidateViewListener must expose onClickCompositionCaret" >&2
@@ -135,29 +156,39 @@ for file in "$soft_bar_file" "$float_bar_file"; do
     exit 1
   }
   grep -q 'CompositionCaretMagnifier' "$file" || {
-    echo "$(basename "$file") must use CompositionCaretMagnifier for enlarged caret placement" >&2
+    echo "$(basename "$file") must use CompositionCaretMagnifier" >&2
     exit 1
   }
-  grep -q 'DecodingInfo\.compositionTextForEditing' "$file" || {
-    echo "$(basename "$file") must render raw composition text for editing" >&2
+  grep -q 'DecodingInfo\.compositionTextForCaretDisplay' "$file" || {
+    echo "$(basename "$file") must render the composition text used for caret hit testing" >&2
     exit 1
   }
   grep -q 'DecodingInfo\.compositionCaretBoundary' "$file" || {
-    echo "$(basename "$file") must render the current composition caret boundary" >&2
+    echo "$(basename "$file") must render the current caret boundary" >&2
     exit 1
   }
   grep -q 'DecodingInfo\.isCompositionEditingAvailable' "$file" || {
-    echo "$(basename "$file") must gate magnifier activation to editable full-keyboard Pinyin composition" >&2
+    echo "$(basename "$file") must gate magnifier activation" >&2
     exit 1
   }
-  grep -q 'onClickCompositionCaret' "$file" || {
-    echo "$(basename "$file") must notify composition caret clicks" >&2
+  grep -q 'compositionMagnifier.setOnCaretChanged' "$file" || {
+    echo "$(basename "$file") must keep popup caret updates active while open" >&2
     exit 1
   }
-  if grep -q 'displayText\.replace("|", "")' "$file"; then
-    echo "$(basename "$file") must not derive hit-test text by stripping a visible caret marker" >&2
+  grep -q 'dispatchCompositionCaret' "$file" || {
+    echo "$(basename "$file") must update active caret during repeated tap/drag" >&2
     exit 1
-  fi
+  }
+  awk '
+    /MotionEvent.ACTION_UP ->/ { in_up = 1; next }
+    in_up && /compositionMagnifier\.update/ { updated = 1 }
+    in_up && /compositionMagnifier\.dismiss/ { exit 1 }
+    in_up && /^[[:space:]]*}/ { in_up = 0 }
+    END { exit updated ? 0 : 1 }
+  ' "$file" || {
+    echo "$(basename "$file") must keep the magnifier open after finger up" >&2
+    exit 1
+  }
 done
 
 for file in "$input_view_file" "$candidate_view_file"; do
@@ -173,17 +204,29 @@ for file in "$input_view_file" "$candidate_view_file"; do
     echo "$(basename "$file") must route backspace through caret deletion" >&2
     exit 1
   }
+  grep -q 'compositionInsertLabel' "$file" || {
+    echo "$(basename "$file") must route user-entered composition separators through targeted caret insertion" >&2
+    exit 1
+  }
+  awk '
+    /keyCode == KeyEvent\.KEYCODE_DEL ->/ { in_delete = 1; next }
+    in_delete && /dismissCompositionMagnifier\(\)/ { exit 1 }
+    in_delete && /^[[:space:]]*}/ { in_delete = 0 }
+    END { exit 0 }
+  ' "$file" || {
+    echo "$(basename "$file") must keep the composition editor open during targeted backspace" >&2
+    exit 1
+  }
+  awk '
+    /Character\.isLetter/ { in_insert = 1; next }
+    in_insert && /dismissCompositionMagnifier\(\)/ { exit 1 }
+    in_insert && /^[[:space:]]*}/ { in_insert = 0 }
+    END { exit 0 }
+  ' "$file" || {
+    echo "$(basename "$file") must keep the composition editor open during targeted character input" >&2
+    exit 1
+  }
 done
-
-grep -q 'clearCompositionCaret' "$input_view_file" || {
-  echo "InputView must clear composition caret on reset/commit paths" >&2
-  exit 1
-}
-
-grep -q 'clearCompositionCaret' "$candidate_view_file" || {
-  echo "CandidateView must clear composition caret on reset/commit paths" >&2
-  exit 1
-}
 
 [[ -f "$behavior_cases_file" ]] || {
   echo "Missing Android composition editing behavior cases: $behavior_cases_file" >&2
@@ -238,7 +281,7 @@ composition_apply_action() {
       current_caret=$((current_caret + ${#key}))
       ;;
     *)
-      echo "Unknown composition behavior action: $action" >&2
+      echo "Unknown composition action: $action" >&2
       exit 1
       ;;
   esac
@@ -268,37 +311,35 @@ while IFS=$'\t' read -r name initial_text initial_caret actions expected_text ex
 done < "$behavior_cases_file"
 
 if (( case_count < 6 )); then
-  echo "Expected at least 6 Android composition editing behavior cases" >&2
+  echo "Expected at least 6 Android composition behavior cases" >&2
   exit 1
 fi
 
-composition_raw_from_display() {
+composition_display_without_marker() {
   local display="$1"
   printf '%s' "${display//|/}"
 }
 
-composition_caret_from_display() {
+composition_caret_from_display_marker() {
   local display="$1"
+  local fallback="$2"
   if [[ "$display" == *"|"* ]]; then
     local before="${display%%|*}"
     before="${before//|/}"
     printf '%s' "${#before}"
   else
-    printf '%s' ""
+    printf '%s' "$fallback"
   fi
 }
 
 boundary_case_count=0
-while IFS=$'\t' read -r name display_text target_boundary actions expected_text expected_caret forbidden_text; do
+while IFS=$'\t' read -r name raw_text display_text target_boundary actions expected_text expected_caret forbidden_text; do
   [[ "$name" == "name" ]] && continue
   [[ -n "$name" ]] || continue
-  text="$(composition_raw_from_display "$display_text")"
-  marker_caret="$(composition_caret_from_display "$display_text")"
-  if [[ -n "$marker_caret" ]]; then
-    caret="$(composition_clamp_caret "$marker_caret" "$text")"
-  else
-    caret="$(composition_clamp_caret "$target_boundary" "$text")"
-  fi
+  text="$raw_text"
+  caret="$(composition_caret_from_display_marker "$display_text" "$target_boundary")"
+  display_text="$(composition_display_without_marker "$display_text")"
+  caret="$(composition_clamp_caret "$caret" "$text")"
   IFS=',' read -ra action_list <<< "$actions"
   for action in "${action_list[@]}"; do
     composition_apply_action text caret "$action"
@@ -309,14 +350,14 @@ while IFS=$'\t' read -r name display_text target_boundary actions expected_text 
     echo "  expected text=$expected_text caret=$expected_caret" >&2
     exit 1
   fi
-  if [[ -n "$forbidden_text" && "$text" == "$forbidden_text" ]]; then
+  if [[ -n "$forbidden_text" && "$forbidden_text" != "-" && "$text" == "$forbidden_text" ]]; then
     echo "Boundary case produced forbidden text: $name -> $text" >&2
     exit 1
   fi
   boundary_case_count=$((boundary_case_count + 1))
 done < "$boundary_cases_file"
 
-if (( boundary_case_count < 5 )); then
-  echo "Expected at least 5 Android composition boundary cases" >&2
+if (( boundary_case_count < 6 )); then
+  echo "Expected at least 6 Android composition boundary cases" >&2
   exit 1
 fi

@@ -183,7 +183,8 @@ class CandidateView(context: Context, private val service: ImeService) : Lifecyc
                 true
             }
             Character.isLetter(keyChar) || keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON -> {
-                if (!Character.isLetter(keyChar) || !DecodingInfo.insertCompositionAtCaret(label)) {
+                val compositionInsertLabel = if (keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON) "'" else label
+                if (!compositionInsertLabel.first().isLetterOrSeparator() || !DecodingInfo.insertCompositionAtCaret(compositionInsertLabel)) {
                     DecodingInfo.inputAction(event)
                 }
                 updateCandidate()
@@ -197,11 +198,13 @@ class CandidateView(context: Context, private val service: ImeService) : Lifecyc
     }
 
     fun resetToIdleState() {
+        dismissCompositionMagnifier()
         DecodingInfo.clearCompositionCaret()
         DecodingInfo.reset()
     }
 
     fun chooseAndUpdate(candId: Int = mSkbCandidatesBarView.getActiveCandNo()) {
+        dismissCompositionMagnifier()
         val choice = DecodingInfo.chooseDecodingCandidate(candId)
         if (DecodingInfo.isCandidatesEmpty || DecodingInfo.isAssociate) {
             commitDecInfoText(choice)
@@ -212,6 +215,14 @@ class CandidateView(context: Context, private val service: ImeService) : Lifecyc
     private fun updateCandidate() {
         DecodingInfo.updateDecodingCandidate()
         if (DecodingInfo.isCandidatesEmpty) resetToIdleState()
+    }
+
+    private fun dismissCompositionMagnifier() {
+        mSkbCandidatesBarView.dismissCompositionMagnifier()
+    }
+
+    private fun Char.isLetterOrSeparator(): Boolean {
+        return isLetter() || this == '\''
     }
 
     inner class ChoiceNotifier internal constructor() : CandidateViewListener {

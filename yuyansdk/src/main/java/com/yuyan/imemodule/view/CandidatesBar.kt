@@ -278,7 +278,8 @@ class CandidatesBar(context: Context?, attrs: AttributeSet?) : RelativeLayout(co
      * 显示候选词
      */
     fun showCandidates() {
-        mComposingView.setComposition(DecodingInfo.compositionTextForEditing, DecodingInfo.compositionCaretBoundary)
+        mComposingView.setComposition(DecodingInfo.compositionTextForCaretDisplay, DecodingInfo.compositionCaretBoundary)
+        refreshCompositionMagnifier()
         val container = KeyboardManager.instance.currentContainer
         mIvMenuSetting.drawable.setLevel( if(container is InputBaseContainer) 0 else 1)
         if (container is ClipBoardContainer) {
@@ -405,24 +406,43 @@ class CandidatesBar(context: Context?, attrs: AttributeSet?) : RelativeLayout(co
         mFlowerType.setTextColor(textColor)
     }
 
+    fun dismissCompositionMagnifier() {
+        compositionMagnifier.dismiss()
+    }
+
+    private fun refreshCompositionMagnifier() {
+        val text = DecodingInfo.compositionTextForCaretDisplay
+        if (compositionMagnifier.isShowing && DecodingInfo.isCompositionEditingAvailable && text.isNotEmpty()) {
+            compositionMagnifier.update(mComposingView, text, DecodingInfo.compositionCaretBoundary, 0f, 0f)
+        }
+    }
+
     private fun handleCompositionTouch(event: MotionEvent): Boolean {
-        val text = DecodingInfo.compositionTextForEditing
+        val text = DecodingInfo.compositionTextForCaretDisplay
         if (!DecodingInfo.isCompositionEditingAvailable || text.isEmpty()) {
             compositionMagnifier.dismiss()
             return false
         }
+        compositionMagnifier.setOnCaretChanged { caret ->
+            dispatchCompositionCaret(caret)
+        }
         return when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                compositionMagnifier.show(mComposingView, text, DecodingInfo.compositionCaretBoundary, event.x, event.y)
+                val rawCaret = mComposingView.resolveCaretBoundary(event.x, event.y)
+                val caret = dispatchCompositionCaret(rawCaret) ?: rawCaret
+                compositionMagnifier.show(mComposingView, text, caret, event.x, event.y)
                 true
             }
             MotionEvent.ACTION_MOVE -> {
-                compositionMagnifier.update(mComposingView, text, DecodingInfo.compositionCaretBoundary, event.x, event.y)
+                val rawCaret = mComposingView.resolveCaretBoundary(event.x, event.y)
+                val caret = dispatchCompositionCaret(rawCaret) ?: rawCaret
+                compositionMagnifier.update(mComposingView, text, caret, event.x, event.y)
                 true
             }
             MotionEvent.ACTION_UP -> {
-                compositionMagnifier.finalizeCaret(mComposingView, text, event.x, event.y)?.let { caret ->
-                    mCvListener.onClickCompositionCaret(caret)
+                compositionMagnifier.finalizeCaret(mComposingView, text, event.x, event.y)?.let { rawCaret ->
+                    val caret = dispatchCompositionCaret(rawCaret) ?: rawCaret
+                    compositionMagnifier.update(mComposingView, text, caret, event.x, event.y)
                 }
                 true
             }
@@ -432,5 +452,10 @@ class CandidatesBar(context: Context?, attrs: AttributeSet?) : RelativeLayout(co
             }
             else -> false
         }
+    }
+
+    private fun dispatchCompositionCaret(caret: Int): Int? {
+        mCvListener.onClickCompositionCaret(caret)
+        return DecodingInfo.compositionCaretBoundary
     }
 }
