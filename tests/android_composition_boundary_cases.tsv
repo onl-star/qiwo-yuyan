@@ -1,0 +1,7 @@
+name	display_text	target_boundary	actions	expected_text	expected_caret	forbidden_text
+marker_between_m_i	m|ihao	1	none	mihao	1	m|ihao
+backspace_visible_between_m_i	m|ihao	1	backspace	ihao	0	mhao
+target_boundary_between_m_i	mihao	1	none	mihao	1	
+tap_before_start_clamps	mihao	-8	none	mihao	0	
+tap_after_end_clamps	mihao	99	none	mihao	5	
+backspace_after_end	mihao|	5	backspace	miha	4	

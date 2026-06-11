@@ -104,6 +104,21 @@ object RimeEngine {
         return compositionCaret != null && isFullKeyboardPinyinCompositionEditable()
     }
 
+    fun isCompositionEditingAvailable(): Boolean {
+        return isFullKeyboardPinyinCompositionEditable()
+    }
+
+    fun compositionTextForEditing(): String {
+        return if (isFullKeyboardPinyinCompositionEditable()) showComposition else ""
+    }
+
+    fun compositionCaretBoundary(): Int? {
+        val caret = compositionCaret ?: return null
+        val composition = compositionTextForEditing()
+        if (composition.isEmpty()) return null
+        return caret.coerceIn(0, composition.length)
+    }
+
     fun setCompositionCaret(caret: Int): Boolean {
         if (!isFullKeyboardPinyinCompositionEditable()) {
             clearCompositionCaret()
@@ -121,7 +136,7 @@ object RimeEngine {
         val composition = showComposition
         val caret = compositionCaret
         if (caret == null || composition.isEmpty() || !isFullKeyboardPinyinCompositionEditable()) return composition
-        val displayCaret = caret.coerceIn(0, composition.length)
+        val displayCaret = compositionCaretBoundary() ?: return composition
         return composition.substring(0, displayCaret) + "|" + composition.substring(displayCaret)
     }
 

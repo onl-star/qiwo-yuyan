@@ -90,6 +90,15 @@ object DecodingInfo {
     val isCompositionCaretActive: Boolean
         get() = Kernel.isCompositionCaretActive()
 
+    val isCompositionEditingAvailable: Boolean
+        get() = Kernel.isCompositionEditingAvailable()
+
+    val compositionTextForEditing: String
+        get() = Kernel.compositionTextForEditing
+
+    val compositionCaretBoundary: Int?
+        get() = Kernel.compositionCaretBoundary
+
     fun setCompositionCaret(caret: Int): Boolean {
         return Kernel.setCompositionCaret(caret)
     }

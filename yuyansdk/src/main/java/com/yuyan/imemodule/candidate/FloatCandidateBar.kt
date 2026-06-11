@@ -11,7 +11,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
-import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.OnScrollListener
@@ -23,6 +22,8 @@ import com.yuyan.imemodule.keyboard.container.CandidatesContainer
 import com.yuyan.imemodule.manager.layout.CustomLinearLayoutManager
 import com.yuyan.imemodule.service.DecodingInfo
 import com.yuyan.imemodule.singleton.EnvironmentSingleton.Companion.instance
+import com.yuyan.imemodule.view.CompositionCaretMagnifier
+import com.yuyan.imemodule.view.CompositionCaretTextView
 import splitties.dimensions.dp
 
 /**
@@ -33,13 +34,12 @@ class FloatCandidateBar(context: Context?, attrs: AttributeSet?) : RelativeLayou
 
     private lateinit var mCvListener: CandidateViewListener // 候选词视图监听器
     private lateinit var mCandidatesDataContainer: LinearLayout //候选词视图
-    private lateinit var mComposingView: TextView // 组成字符串的View，用于显示输入的拼音。
+    private lateinit var mComposingView: CompositionCaretTextView // 组成字符串的View，用于显示输入的拼音。
     private lateinit var mRVCandidates: RecyclerView    //候选词列表
     private lateinit var mCandidatesAdapter: CandidatesBarAdapter
     private lateinit var candidatesData: LinearLayout //候选词视图
+    private val compositionMagnifier by lazy { CompositionCaretMagnifier(this.context) }
     private var activeCandNo:Int = 0
-    private var composingTouchX = 0f
-    private var composingTouchY = 0f
 
     fun initialize(cvListener: CandidateViewListener) {
         mCvListener = cvListener
@@ -53,24 +53,11 @@ class FloatCandidateBar(context: Context?, attrs: AttributeSet?) : RelativeLayou
             mCandidatesDataContainer = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
             }
-            mComposingView = TextView(context).apply {
+            mComposingView = CompositionCaretTextView(this@FloatCandidateBar.context).apply {
                 includeFontPadding = false
                 setPadding(dp(10), 0, dp(10), 0)
                 setOnTouchListener { _, event ->
-                    if (event.action == MotionEvent.ACTION_UP) {
-                        composingTouchX = event.x
-                        composingTouchY = event.y
-                    }
-                    false
-                }
-                setOnClickListener {
-                    val displayText = mComposingView.text.toString()
-                    val textLength = displayText.replace("|", "").length
-                    if (textLength > 0) {
-                        val rawOffset = getOffsetForPosition(composingTouchX, composingTouchY).coerceIn(0, displayText.length)
-                        val offset = displayText.take(rawOffset).count { it != '|' }.coerceIn(0, textLength)
-                        mCvListener.onClickCompositionCaret(offset)
-                    }
+                    handleCompositionTouch(event)
                 }
             }
             candidatesData = LinearLayout(context).apply {
@@ -118,10 +105,12 @@ class FloatCandidateBar(context: Context?, attrs: AttributeSet?) : RelativeLayou
      * 显示候选词
      */
     fun showCandidates() {
-        mComposingView.text = DecodingInfo.compositionTextForDisplay
+        mComposingView.setComposition(DecodingInfo.compositionTextForEditing, DecodingInfo.compositionCaretBoundary)
         if (DecodingInfo.isCandidatesEmpty) {
+            compositionMagnifier.dismiss()
             this.visibility = GONE
         } else {
+            if (!DecodingInfo.isCompositionEditingAvailable) compositionMagnifier.dismiss()
             if (DecodingInfo.candidateSize > DecodingInfo.activeCandidateBar) mRVCandidates.layoutManager?.scrollToPosition(DecodingInfo.activeCandidateBar)
             this.visibility = VISIBLE
         }
@@ -180,5 +169,34 @@ class FloatCandidateBar(context: Context?, attrs: AttributeSet?) : RelativeLayou
         drawable.setCornerRadius(cornerRadiusInPx)
         background = drawable
         mCandidatesAdapter.notifyChanged()
+    }
+
+    private fun handleCompositionTouch(event: MotionEvent): Boolean {
+        val text = DecodingInfo.compositionTextForEditing
+        if (!DecodingInfo.isCompositionEditingAvailable || text.isEmpty()) {
+            compositionMagnifier.dismiss()
+            return false
+        }
+        return when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                compositionMagnifier.show(mComposingView, text, DecodingInfo.compositionCaretBoundary, event.x, event.y)
+                true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                compositionMagnifier.update(mComposingView, text, DecodingInfo.compositionCaretBoundary, event.x, event.y)
+                true
+            }
+            MotionEvent.ACTION_UP -> {
+                compositionMagnifier.finalizeCaret(mComposingView, text, event.x, event.y)?.let { caret ->
+                    mCvListener.onClickCompositionCaret(caret)
+                }
+                true
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                compositionMagnifier.dismiss()
+                true
+            }
+            else -> false
+        }
     }
 }

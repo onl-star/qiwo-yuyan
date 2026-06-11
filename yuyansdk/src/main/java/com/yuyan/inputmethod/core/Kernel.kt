@@ -46,6 +46,10 @@ object Kernel {
         return RimeEngine.isCompositionCaretActive()
     }
 
+    fun isCompositionEditingAvailable(): Boolean {
+        return RimeEngine.isCompositionEditingAvailable()
+    }
+
     fun setCompositionCaret(caret: Int): Boolean {
         return RimeEngine.setCompositionCaret(caret)
     }
@@ -64,6 +68,12 @@ object Kernel {
 
     val compositionTextForDisplay: String
         get() = RimeEngine.compositionTextForDisplay()
+
+    val compositionTextForEditing: String
+        get() = RimeEngine.compositionTextForEditing()
+
+    val compositionCaretBoundary: Int?
+        get() = RimeEngine.compositionCaretBoundary()
 
     // 执行选择动作，选择了index指向的词语
     fun getWordSelectedWord(index: Int) {
