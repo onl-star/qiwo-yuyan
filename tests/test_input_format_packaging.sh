@@ -9,10 +9,11 @@ ime_service_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/service/ImeSe
 candidate_view_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/candidate/CandidateView.kt"
 rime_engine_file="$root/yuyansdk/src/main/java/com/yuyan/inputmethod/RimeEngine.kt"
 gradle_file="$root/yuyansdk/build.gradle"
+workflow_file="$root/.github/workflows/build.yml"
 android_source_root="$root/yuyansdk/src/main/java"
 android_res_root="$root/yuyansdk/src/main/res"
 
-for file in "$wrapper_file" "$prefs_file" "$strings_file" "$ime_service_file" "$candidate_view_file" "$rime_engine_file" "$gradle_file"; do
+for file in "$wrapper_file" "$prefs_file" "$strings_file" "$ime_service_file" "$candidate_view_file" "$rime_engine_file" "$gradle_file" "$workflow_file"; do
   [[ -f "$file" ]] || {
     echo "Missing expected Android input-format integration file: $file" >&2
     exit 1
@@ -114,6 +115,11 @@ grep -q 'qiwo-input-format-core' "$gradle_file" || {
   exit 1
 }
 
+grep -q 'QIWO_INPUT_FORMAT_CORE_DIR' "$gradle_file" || {
+  echo "yuyansdk build.gradle must allow CI to override qiwo-input-format-core location" >&2
+  exit 1
+}
+
 grep -q 'libqiwo_input_format.so' "$gradle_file" || {
   echo "yuyansdk build.gradle must package libqiwo_input_format.so" >&2
   exit 1
@@ -126,6 +132,21 @@ grep -q 'verifyQiwoInputFormatJniLibs' "$gradle_file" || {
 
 grep -q 'jniLibs.srcDirs' "$gradle_file" || {
   echo "yuyansdk build.gradle must configure jniLibs packaging" >&2
+  exit 1
+}
+
+grep -q 'Checkout qiwo-input-format-core' "$workflow_file" || {
+  echo "Android CI must checkout qiwo-input-format-core" >&2
+  exit 1
+}
+
+grep -q 'Build qiwo-input-format-core JNI libraries' "$workflow_file" || {
+  echo "Android CI must build qiwo-input-format-core JNI libraries" >&2
+  exit 1
+}
+
+grep -q 'armv7-linux-androideabi' "$workflow_file" || {
+  echo "Android CI must build qiwo-input-format-core for all yuyansdk ABIs" >&2
   exit 1
 }
 

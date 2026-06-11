@@ -18,7 +18,8 @@ static def getAppBuildTime() {
     return "git log -1 --pretty=%ai".execute().text.trim()
 }
 
-def qiwoInputFormatCoreDir = rootProject.file('../qiwo-input-format-core')
+def qiwoInputFormatCorePath = System.getenv('QIWO_INPUT_FORMAT_CORE_DIR') ?: '../qiwo-input-format-core'
+def qiwoInputFormatCoreDir = rootProject.file(qiwoInputFormatCorePath)
 def qiwoInputFormatPrebuiltJniLibsDir = new File(qiwoInputFormatCoreDir, 'target/android-jniLibs')
 def qiwoInputFormatGeneratedJniLibsDir = file("$buildDir/generated/jniLibs/qiwoInputFormat")
 def qiwoInputFormatAndroidTargets = [
