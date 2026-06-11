@@ -1,0 +1,6 @@
+name	mode	raw	expected_choices	expected_active	selected_index	expected_selected	expected_visible
+ambiguous_qwerty_mangao	full_pinyin	mangao	man'gao,mang'ao	0	1	mang'ao	true
+single_qwerty_nihao	full_pinyin	nihao		-1	-1		false
+existing_apostrophe_mangao	full_pinyin	mang'ao	man'gao,mang'ao	1	0	man'gao	true
+invalid_qwerty_digit	full_pinyin	man2gao		-1	-1		false
+unsupported_t9_mangao	t9	mangao		-1	-1		false
