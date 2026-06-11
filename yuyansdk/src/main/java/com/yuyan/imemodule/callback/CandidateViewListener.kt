@@ -9,6 +9,7 @@ import com.yuyan.imemodule.prefs.behavior.SkbMenuMode
 interface CandidateViewListener {
     fun onClickChoice(choiceId: Int)  //选择候选词的处理函数
     fun onClickCompositionCaret(caret: Int) {} //选择组合串编辑光标
+    fun onClickPinyinSegmentation(position: Int) {} //选择拼音音节切分
     fun onClickMore(level: Int)  // 加载更多候选词
     fun onClickMenu(skbMenuMode: SkbMenuMode)  //选择设置菜单
     fun onClickClearCandidate()  //清空候选词

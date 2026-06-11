@@ -107,6 +107,24 @@ object DecodingInfo {
         Kernel.clearCompositionCaret()
     }
 
+    val isPinyinSegmentationSelectorAvailable: Boolean
+        get() = Kernel.isPinyinSegmentationSelectorAvailable()
+
+    val pinyinSegmentationChoices: Array<String>
+        get() = Kernel.pinyinSegmentationChoices
+
+    val activePinyinSegmentationIndex: Int
+        get() = Kernel.activePinyinSegmentationIndex
+
+    fun selectPinyinSegmentation(position: Int): Boolean {
+        activeCandidate = 0
+        activeCandidateBar = 0
+        clearCompositionCaret()
+        val selected = Kernel.selectPinyinSegmentation(position)
+        if (selected) candidatesLiveData.value = Kernel.candidates
+        return selected
+    }
+
     fun insertCompositionAtCaret(key: String): Boolean {
         activeCandidate = 0
         activeCandidateBar = 0

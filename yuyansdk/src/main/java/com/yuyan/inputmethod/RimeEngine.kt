@@ -12,6 +12,7 @@ import com.yuyan.inputmethod.data.InputKey
 import com.yuyan.inputmethod.data.KeyRecordStack
 import com.yuyan.inputmethod.util.DoublePinYinUtils
 import com.yuyan.inputmethod.util.LX17PinYinUtils
+import com.yuyan.inputmethod.util.PinyinSegmentation
 import com.yuyan.inputmethod.util.QwertyPinYinUtils
 import com.yuyan.inputmethod.util.T9PinYinUtils
 import java.util.Locale
@@ -23,6 +24,9 @@ object RimeEngine {
     var showComposition: String = "" // 候选词上方展示的拼音
     var preCommitText: String = "" // 待提交的文字
     private var compositionCaret: Int? = null
+    private var rawPinyinComposition: String = ""
+    private var pinyinSegmentationChoices: List<String> = emptyList()
+    private var activePinyinSegmentationIndex: Int = -1
     private var customPhraseSize: Int = 0 // 自定义引擎候选词长度
     const val MASK_CASE_LOWER = 0
     private var charCase = 0x0000
@@ -32,6 +36,7 @@ object RimeEngine {
 
     fun selectSchema(mod: String): Boolean {
         clearCompositionCaret()
+        clearPinyinSegmentation()
         keyRecordStack.clear()
         charCase = MASK_CASE_LOWER
         Rime.startup(Launcher.instance.context, false)
@@ -106,6 +111,73 @@ object RimeEngine {
 
     fun isCompositionEditingAvailable(): Boolean {
         return isFullKeyboardPinyinCompositionEditable()
+    }
+
+    fun isPinyinSegmentationSelectorAvailable(): Boolean {
+        refreshPinyinSegmentation()
+        return pinyinSegmentationChoices.isNotEmpty()
+    }
+
+    fun pinyinSegmentationChoices(): Array<String> {
+        refreshPinyinSegmentation()
+        return pinyinSegmentationChoices.toTypedArray()
+    }
+
+    fun activePinyinSegmentationIndex(): Int {
+        refreshPinyinSegmentation()
+        return activePinyinSegmentationIndex
+    }
+
+    fun selectPinyinSegmentation(index: Int): Boolean {
+        refreshPinyinSegmentation()
+        val selected = pinyinSegmentationChoices.getOrNull(index) ?: return false
+        if (!isFullKeyboardPinyinCompositionEditable()) {
+            clearPinyinSegmentation()
+            return false
+        }
+        val currentComposition = Rime.compositionText
+        val replaced = if (currentComposition == selected) {
+            true
+        } else {
+            Rime.replaceKey(0, currentComposition.length, selected)
+        }
+        if (!replaced) return false
+        updateCandidatesOrCommitText()
+        refreshPinyinSegmentation()
+        activePinyinSegmentationIndex = pinyinSegmentationChoices.indexOf(selected)
+        return true
+    }
+
+    fun clearPinyinSegmentation() {
+        rawPinyinComposition = ""
+        pinyinSegmentationChoices = emptyList()
+        activePinyinSegmentationIndex = -1
+    }
+
+    private fun refreshPinyinSegmentation() {
+        if (!isFullKeyboardPinyinCompositionEditable()) {
+            clearPinyinSegmentation()
+            return
+        }
+        val rawComposition = PinyinSegmentation.normalizeInput(Rime.compositionText) ?: run {
+            clearPinyinSegmentation()
+            return
+        }
+        val previousChoice = pinyinSegmentationChoices.getOrNull(activePinyinSegmentationIndex)
+        val choices = PinyinSegmentation.segmentations(rawComposition)
+        if (choices.isEmpty()) {
+            clearPinyinSegmentation()
+            rawPinyinComposition = rawComposition
+            return
+        }
+        val currentSegmented = Rime.compositionText.lowercase(Locale.ROOT)
+        var nextActiveIndex = choices.indexOf(currentSegmented)
+        if (nextActiveIndex < 0 && rawComposition == rawPinyinComposition && previousChoice != null && previousChoice in choices) {
+            nextActiveIndex = choices.indexOf(previousChoice)
+        }
+        rawPinyinComposition = rawComposition
+        pinyinSegmentationChoices = choices
+        activePinyinSegmentationIndex = if (nextActiveIndex >= 0) nextActiveIndex else 0
     }
 
     fun compositionTextForEditing(): String {
@@ -210,6 +282,7 @@ object RimeEngine {
         showComposition = ""
         preCommitText = ""
         clearCompositionCaret()
+        clearPinyinSegmentation()
         keyRecordStack.clear()
         Rime.clearComposition()
         if(charCase == KeyEvent.META_SHIFT_ON) charCase = MASK_CASE_LOWER
@@ -253,6 +326,7 @@ object RimeEngine {
         val rimeCommit = Rime.getRimeCommit()
         if (rimeCommit != null) {
             clearCompositionCaret()
+            clearPinyinSegmentation()
             keyRecordStack.clear()
             preCommitText = rimeCommit.commitText
             preCommitText = if (charCase == KeyEvent.META_SHIFT_ON) {
@@ -269,7 +343,10 @@ object RimeEngine {
         val candidates = Rime.getRimeContext()?.candidates?.asList() ?: emptyList()
         customPhraseSize = 0
         val compositionText = Rime.compositionText
-        if (compositionText.isEmpty()) clearCompositionCaret()
+        if (compositionText.isEmpty()) {
+            clearCompositionCaret()
+            clearPinyinSegmentation()
+        }
         showCandidates = when {
             compositionText.isNotBlank() -> {
                 val phrase = CustomEngine.processPhrase(compositionText.replace("\'", ""))
@@ -317,6 +394,7 @@ object RimeEngine {
         }
         showComposition = composition
         preCommitText = ""
+        refreshPinyinSegmentation()
         return null
     }
 

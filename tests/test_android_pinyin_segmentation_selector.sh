@@ -151,8 +151,22 @@ segment_case() {
   esac
 }
 
+tsv_field() {
+  local line="$1"
+  local index="$2"
+  printf '%s\n' "$line" | awk -F '\t' -v index="$index" '{ print $index }'
+}
+
 case_count=0
-while IFS=$'\t' read -r name mode raw expected_choices expected_active selected_index expected_selected expected_visible; do
+while IFS= read -r line; do
+  name="$(tsv_field "$line" 1)"
+  mode="$(tsv_field "$line" 2)"
+  raw="$(tsv_field "$line" 3)"
+  expected_choices="$(tsv_field "$line" 4)"
+  expected_active="$(tsv_field "$line" 5)"
+  selected_index="$(tsv_field "$line" 6)"
+  expected_selected="$(tsv_field "$line" 7)"
+  expected_visible="$(tsv_field "$line" 8)"
   [[ "$name" == "name" ]] && continue
   [[ -n "$name" ]] || continue
   ((case_count += 1))

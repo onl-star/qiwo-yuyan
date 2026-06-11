@@ -171,6 +171,7 @@ class CandidatesContainer(context: Context, inputView: InputView) : BaseContaine
     fun showCandidatesView() {
         if (DecodingInfo.isCandidatesEmpty || DecodingInfo.isAssociate){
             mRVSymbolsView.removeAllViews()
+            hideLeftPrefixView()
         } else {
             if(DecodingInfo.activeCandidate == 0){
                 mCandidatesAdapter = CandidatesAdapter(context)
@@ -184,11 +185,36 @@ class CandidatesContainer(context: Context, inputView: InputView) : BaseContaine
                 mCandidatesAdapter.notifyDataSetChanged()
             }
 //            if(DecodingInfo.candidateSize > DecodingInfo.activeCandidate) mRVSymbolsView.scrollToPosition(DecodingInfo.activeCandidate)
-            if (InputModeSwitcher.isChineseT9) {
-                mRVLeftPrefix.visibility = VISIBLE
-                updatePrefixsView()
+            when {
+                DecodingInfo.isPinyinSegmentationSelectorAvailable -> updatePinyinSegmentationView()
+                InputModeSwitcher.isChineseT9 -> {
+                    mRVLeftPrefix.visibility = VISIBLE
+                    updatePrefixsView()
+                }
+                else -> hideLeftPrefixView()
             }
         }
+    }
+
+    private fun updatePinyinSegmentationView() {
+        val choices = DecodingInfo.pinyinSegmentationChoices
+        if (choices.isEmpty()) {
+            hideLeftPrefixView()
+            return
+        }
+        if (mRVLeftPrefix.footerCount > 0) mRVLeftPrefix.removeFooterView(mLlAddSymbol)
+        mRVLeftPrefix.visibility = VISIBLE
+        mRVLeftPrefix.setAdapter(null)
+        mRVLeftPrefix.setOnItemClickListener { _: View?, position: Int ->
+            inputView.onClickPinyinSegmentation(position)
+        }
+        mRVLeftPrefix.setAdapter(PrefixAdapter(context, choices, DecodingInfo.activePinyinSegmentationIndex))
+    }
+
+    private fun hideLeftPrefixView() {
+        if (mRVLeftPrefix.footerCount > 0) mRVLeftPrefix.removeFooterView(mLlAddSymbol)
+        mRVLeftPrefix.visibility = GONE
+        mRVLeftPrefix.setAdapter(null)
     }
 
     //更新左侧拼音显示

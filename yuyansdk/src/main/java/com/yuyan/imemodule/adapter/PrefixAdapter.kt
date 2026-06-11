@@ -1,6 +1,8 @@
 package com.yuyan.imemodule.adapter
 
 import android.content.Context
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,10 +15,11 @@ import com.yuyan.imemodule.view.popup.AutoScaleTextView
 /**
  * 拼音选择
  */
-class PrefixAdapter(context: Context?, private val mDatas: Array<String>) :
+class PrefixAdapter(context: Context?, private val mDatas: Array<String>, private val activeIndex: Int = -1) :
     RecyclerView.Adapter<PrefixAdapter.SymbolTypeHolder>() {
     private val inflater: LayoutInflater = LayoutInflater.from(context)
     private val textColor: Int = activeTheme.keyTextColor
+    private val activeBackgroundColor: Int = activeTheme.keyBackgroundColor
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SymbolTypeHolder {
         val view = inflater.inflate(R.layout.sdk_item_list_alpha_symbol_noraml, parent, false)
@@ -25,6 +28,16 @@ class PrefixAdapter(context: Context?, private val mDatas: Array<String>) :
 
     override fun onBindViewHolder(holder: SymbolTypeHolder, position: Int) {
         holder.tvSymbolType.setText(sbc2dbcCase(mDatas[position]))
+        if (position == activeIndex) {
+            holder.tvSymbolType.setTypeface(Typeface.DEFAULT_BOLD)
+            holder.tvSymbolType.background = GradientDrawable().apply {
+                setColor(activeBackgroundColor)
+                cornerRadius = 8f
+            }
+        } else {
+            holder.tvSymbolType.setTypeface(Typeface.DEFAULT)
+            holder.tvSymbolType.background = null
+        }
     }
 
     override fun getItemCount(): Int {

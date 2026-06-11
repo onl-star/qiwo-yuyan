@@ -558,6 +558,10 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
             if (DecodingInfo.setCompositionCaret(caret)) updateCandidateBar()
         }
 
+        override fun onClickPinyinSegmentation(position: Int) {
+            this@InputView.onClickPinyinSegmentation(position)
+        }
+
         override fun onClickMore(level: Int) {
             if (level == 0) {
                 onSettingsMenuClick(SkbMenuMode.CandidatesMore)
@@ -602,6 +606,15 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
         DevicesUtils.tryVibrate(this)
         DecodingInfo.selectPrefix(position)
         updateCandidate()
+    }
+
+    fun onClickPinyinSegmentation(position: Int) {
+        DevicesUtils.tryPlayKeyDown()
+        DevicesUtils.tryVibrate(this)
+        if (DecodingInfo.selectPinyinSegmentation(position)) {
+            updateCandidateBar()
+            (KeyboardManager.instance.currentContainer as? CandidatesContainer)?.showCandidatesView()
+        }
     }
 
     fun showSymbols(symbols: Array<String>) {

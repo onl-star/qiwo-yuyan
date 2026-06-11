@@ -58,6 +58,20 @@ object Kernel {
         RimeEngine.clearCompositionCaret()
     }
 
+    fun isPinyinSegmentationSelectorAvailable(): Boolean {
+        return RimeEngine.isPinyinSegmentationSelectorAvailable()
+    }
+
+    val pinyinSegmentationChoices: Array<String>
+        get() = RimeEngine.pinyinSegmentationChoices()
+
+    val activePinyinSegmentationIndex: Int
+        get() = RimeEngine.activePinyinSegmentationIndex()
+
+    fun selectPinyinSegmentation(index: Int): Boolean {
+        return RimeEngine.selectPinyinSegmentation(index)
+    }
+
     fun insertCompositionAtCaret(key: String): Boolean {
         return RimeEngine.insertCompositionAtCaret(key)
     }
