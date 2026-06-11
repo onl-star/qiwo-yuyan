@@ -172,7 +172,12 @@ class CandidateView(context: Context, private val service: ImeService) : Lifecyc
                 true
             }
             label.isDigitsOnly() ->{
-                chooseAndUpdate(label.toInt() - 1)
+                if (DecodingInfo.isCandidatesEmpty || DecodingInfo.isAssociate) {
+                    service.commitText(label)
+                    resetToIdleState()
+                } else {
+                    chooseAndUpdate(label.toInt() - 1)
+                }
                 true
             }
             Character.isLetter(keyChar) || keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON -> {

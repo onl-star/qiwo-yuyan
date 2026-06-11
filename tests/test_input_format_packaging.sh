@@ -140,3 +140,13 @@ grep -q 'service\.commitText' "$candidate_view_file" || {
   echo "CandidateView direct candidate commits must still call ImeService.commitText" >&2
   exit 1
 }
+
+grep -A8 'label\.isDigitsOnly()' "$candidate_view_file" | grep -q 'DecodingInfo\.isCandidatesEmpty' || {
+  echo "CandidateView hardware digit input must distinguish empty candidates from numeric selection" >&2
+  exit 1
+}
+
+grep -A8 'label\.isDigitsOnly()' "$candidate_view_file" | grep -q 'service\.commitText(label)' || {
+  echo "CandidateView hardware digits without candidates must go through ImeService.commitText" >&2
+  exit 1
+}
