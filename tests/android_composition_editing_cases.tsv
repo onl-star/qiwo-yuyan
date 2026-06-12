@@ -1,5 +1,7 @@
 name	initial_text	initial_caret	actions	expected_text	expected_caret	expected_display
 delete_before_middle_caret	mihao	1	backspace	ihao	0	|ihao
+replace_m_with_n_sequence	mihao	1	backspace,insert:n	nihao	1	n|ihao
+delete_left_of_second_boundary	mihao	2	backspace	mhao	1	m|hao
 insert_at_beginning	ihao	0	insert:n	nihao	1	n|ihao
 append_at_end	niha	4	insert:o	nihao	5	nihao|
 backspace_at_beginning	ihao	0	backspace	ihao	0	|ihao
