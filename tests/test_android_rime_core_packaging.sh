@@ -75,6 +75,11 @@ grep -q 'LeaWron/qiwo-android-rime-core' "$workflow_file" || {
   exit 1
 }
 
+grep -q 'QIWO_ANDROID_RIME_CORE_DEPLOY_KEY' "$workflow_file" || {
+  echo "Android CI must use the scoped qiwo-android-rime-core deploy key for private checkout" >&2
+  exit 1
+}
+
 grep -q 'Build qiwo-android-rime-core JNI libraries' "$workflow_file" || {
   echo "Android CI must build qiwo-android-rime-core JNI libraries before Gradle" >&2
   exit 1
