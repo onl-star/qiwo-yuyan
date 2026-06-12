@@ -45,7 +45,7 @@ grep -q 'compositionCaretActive' "$rime_engine_file" || {
   exit 1
 }
 
-for forbidden in CompositionEditMapping compositionCaretFallback compositionCaretRimeBacked replaceCompositionWithEditableText logicalSeparatorTransparentComposition 'Rime.compositionCaret' 'Rime.setCompositionCaret'; do
+for forbidden in CompositionEditMapping compositionCaretFallback compositionCaretRimeBacked replaceCompositionWithEditableText logicalSeparatorTransparentComposition; do
   if grep -q "$forbidden" "$rime_engine_file"; then
     echo "RimeEngine must not use reverted composition editing path: $forbidden" >&2
     exit 1
@@ -73,31 +73,31 @@ done
 
 awk '
   /fun insertCompositionAtCaret\(/ { in_func = 1 }
-  in_func && /moveNativeCompositionCaret/ { moved = 1 }
+  in_func && /Rime\.setCompositionCaret/ { moved = 1 }
   in_func && /processCompositionTextKey/ { typed = 1 }
-  in_func && /Rime\.replaceKey|replaceCompositionWithEditableText|CompositionEditMapping|Rime\.setCompositionCaret/ { exit 1 }
+  in_func && /Rime\.replaceKey|replaceCompositionWithEditableText|CompositionEditMapping|moveNativeCompositionCaret/ { exit 1 }
   in_func && /^    fun / && !/fun insertCompositionAtCaret\(/ { in_func = 0 }
   END { exit moved && typed ? 0 : 1 }
 ' "$rime_engine_file" || {
-  echo "RimeEngine.insertCompositionAtCaret must move the native Rime caret before sending the typed key" >&2
+  echo "RimeEngine.insertCompositionAtCaret must set the native Rime caret directly before sending the typed key" >&2
   exit 1
 }
 
 awk '
   /fun deleteCompositionBeforeCaret\(/ { in_func = 1 }
   in_func && /if \(caret <= 0\) return true/ { guarded = 1 }
-  in_func && /moveNativeCompositionCaret\(caret\)/ { moved = 1 }
+  in_func && /Rime\.setCompositionCaret\(caret\)/ { moved = 1 }
   in_func && /Rime\.processKey\(getRimeKeycodeByName\("BackSpace"\), 0\)/ { deleted = 1 }
-  in_func && /Rime\.replaceKey|replaceCompositionWithEditableText|CompositionEditMapping|Rime\.setCompositionCaret/ { exit 1 }
+  in_func && /Rime\.replaceKey|replaceCompositionWithEditableText|CompositionEditMapping|moveNativeCompositionCaret/ { exit 1 }
   in_func && /^    private fun / { in_func = 0 }
   END { exit guarded && moved && deleted ? 0 : 1 }
 ' "$rime_engine_file" || {
-  echo "RimeEngine.deleteCompositionBeforeCaret must consume boundary deletes and use native Rime backspace" >&2
+  echo "RimeEngine.deleteCompositionBeforeCaret must set the native Rime caret directly before using native Rime backspace" >&2
   exit 1
 }
 
-grep -q 'private fun moveNativeCompositionCaret' "$rime_engine_file" || {
-  echo "RimeEngine must isolate native Rime caret movement" >&2
+grep -q 'Rime.setCompositionCaret' "$rime_engine_file" || {
+  echo "RimeEngine must use direct native Rime caret movement" >&2
   exit 1
 }
 
