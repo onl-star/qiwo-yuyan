@@ -20,6 +20,7 @@ jobs:
     env:
       QIWO_INPUT_FORMAT_CORE_DIR: qiwo-input-format-core
       QIWO_ANDROID_RIME_CORE_DIR: qiwo-android-rime-core
+      QIWO_ANDROID_RIME_CORE_PACKAGE: "false"
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -197,7 +198,7 @@ jobs:
       - name: Upload Debug APK
         uses: actions/upload-artifact@v7
         with:
-          name: qiwo-debug-apk-rime-core
+          name: qiwo-debug-apk-rime-core-checked
           path: app/build/outputs/apk/offline/debug/*.apk
           retention-days: 7
 
@@ -210,6 +211,7 @@ jobs:
     env:
       QIWO_INPUT_FORMAT_CORE_DIR: qiwo-input-format-core
       QIWO_ANDROID_RIME_CORE_DIR: qiwo-android-rime-core
+      QIWO_ANDROID_RIME_CORE_PACKAGE: "false"
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -327,7 +329,7 @@ jobs:
       - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: qiwo-release-apk-rime-core
+          name: qiwo-release-apk-rime-core-checked
           path: app/build/outputs/apk/offline/release/*.apk
           retention-days: 7
 

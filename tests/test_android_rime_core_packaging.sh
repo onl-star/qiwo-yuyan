@@ -26,7 +26,17 @@ grep -q 'QIWO_ANDROID_RIME_CORE_DIR' "$gradle_file" || {
 }
 
 grep -q 'libyuyanime.so' "$gradle_file" || {
-  echo "yuyansdk build.gradle must package libyuyanime.so from the generated Android Rime core" >&2
+  echo "yuyansdk build.gradle must package libyuyanime.so for the Rime runtime" >&2
+  exit 1
+}
+
+grep -q 'QIWO_ANDROID_RIME_CORE_PACKAGE' "$gradle_file" || {
+  echo "yuyansdk build.gradle must gate generated Rime core packaging behind QIWO_ANDROID_RIME_CORE_PACKAGE" >&2
+  exit 1
+}
+
+grep -q 'qiwoAndroidRimeCorePackage' "$gradle_file" || {
+  echo "yuyansdk build.gradle must keep generated Rime core runtime adoption explicit" >&2
   exit 1
 }
 
@@ -60,8 +70,8 @@ grep -q 'copyQiwoAndroidLegacyJniLibs' "$gradle_file" || {
   exit 1
 }
 
-grep -q "exclude '\\*\\*/libyuyanime.so'" "$gradle_file" || {
-  echo "yuyansdk build.gradle must exclude fallback libyuyanime.so when generated Rime core libs are packaged" >&2
+grep -q 'if (qiwoAndroidRimeCorePackage)' "$gradle_file" || {
+  echo "yuyansdk build.gradle must exclude fallback libyuyanime.so only when generated Rime core libs are explicitly packaged" >&2
   exit 1
 }
 
@@ -77,6 +87,11 @@ grep -q 'dependsOn(verifyQiwoAndroidRimeCoreJniLibs)' "$gradle_file" || {
 
 grep -q 'QIWO_ANDROID_RIME_CORE_DIR' "$workflow_file" || {
   echo "Android CI must set QIWO_ANDROID_RIME_CORE_DIR" >&2
+  exit 1
+}
+
+grep -q 'QIWO_ANDROID_RIME_CORE_PACKAGE: "false"' "$workflow_file" || {
+  echo "Android CI must not package the generated Rime core until runtime parity is proven" >&2
   exit 1
 }
 
@@ -120,12 +135,12 @@ grep -q 'scripts/verify-symbols.sh target/android-jniLibs/arm64-v8a/libyuyanime.
   exit 1
 }
 
-grep -q 'qiwo-debug-apk-rime-core' "$workflow_file" || {
-  echo "Debug APK artifact name must indicate rime-core backing" >&2
+grep -q 'qiwo-debug-apk-rime-core-checked' "$workflow_file" || {
+  echo "Debug APK artifact name must indicate rime-core verification without implying runtime replacement" >&2
   exit 1
 }
 
-grep -q 'qiwo-release-apk-rime-core' "$workflow_file" || {
-  echo "Release APK artifact name must indicate rime-core backing" >&2
+grep -q 'qiwo-release-apk-rime-core-checked' "$workflow_file" || {
+  echo "Release APK artifact name must indicate rime-core verification without implying runtime replacement" >&2
   exit 1
 }

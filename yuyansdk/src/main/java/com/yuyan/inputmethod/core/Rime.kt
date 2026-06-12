@@ -15,6 +15,7 @@ class Rime(fullCheck: Boolean) {
         private var instance: Rime? = null
         private var mContext: RimeContext? = null
         private var mStatus: RimeStatus? = null
+        private var directCompositionCaretAvailable: Boolean? = null
 
         @JvmStatic
         fun getInstance(fullCheck: Boolean = false): Rime {
@@ -121,18 +122,79 @@ class Rime(fullCheck: Boolean) {
 
         @JvmStatic
         fun rawInput(): String {
-            return getRimeRawInput()
+            if (!hasDirectCompositionCaret()) return compositionText
+            return try {
+                getRimeRawInput()
+            } catch (_: UnsatisfiedLinkError) {
+                directCompositionCaretAvailable = false
+                compositionText
+            }
         }
 
         @JvmStatic
         fun compositionCaret(): Int {
-            return getRimeCompositionCaret()
+            if (!hasDirectCompositionCaret()) {
+                return composition?.cursorPos?.coerceIn(0, compositionText.length) ?: compositionText.length
+            }
+            return try {
+                getRimeCompositionCaret()
+            } catch (_: UnsatisfiedLinkError) {
+                directCompositionCaretAvailable = false
+                composition?.cursorPos?.coerceIn(0, compositionText.length) ?: compositionText.length
+            }
         }
 
         @JvmStatic
         fun setCompositionCaret(caretPos: Int): Int {
-            return setRimeCompositionCaret(caretPos).also {
-                updateContext()
+            if (!hasDirectCompositionCaret()) {
+                return moveLegacyCompositionCaret(caretPos)
+            }
+            return try {
+                setRimeCompositionCaret(caretPos).also {
+                    updateContext()
+                }
+            } catch (_: UnsatisfiedLinkError) {
+                directCompositionCaretAvailable = false
+                moveLegacyCompositionCaret(caretPos)
+            }
+        }
+
+        private fun hasDirectCompositionCaret(): Boolean {
+            directCompositionCaretAvailable?.let { return it }
+            return try {
+                getRimeCompositionCaret()
+                directCompositionCaretAvailable = true
+                true
+            } catch (_: UnsatisfiedLinkError) {
+                directCompositionCaretAvailable = false
+                false
+            }
+        }
+
+        private fun moveLegacyCompositionCaret(caretPos: Int): Int {
+            val length = compositionText.length
+            val target = caretPos.coerceIn(0, length)
+            val current = composition?.cursorPos?.coerceIn(0, length)
+
+            if (current == null) {
+                moveLegacyCaret("End", 1)
+                moveLegacyCaret("Left", length - target)
+            } else if (target < current) {
+                moveLegacyCaret("Left", current - target)
+            } else if (target > current) {
+                moveLegacyCaret("Right", target - current)
+            }
+
+            updateContext()
+            return composition?.cursorPos?.coerceIn(0, compositionText.length) ?: target
+        }
+
+        private fun moveLegacyCaret(keyName: String, steps: Int) {
+            if (steps <= 0) return
+            val keyCode = getRimeKeycodeByName(keyName)
+            if (keyCode == 0) return
+            repeat(steps) {
+                processRimeKey(keyCode, 0)
             }
         }
 

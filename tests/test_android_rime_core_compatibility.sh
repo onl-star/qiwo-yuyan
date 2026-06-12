@@ -31,6 +31,16 @@ for symbol in getRimeRawInput getRimeCompositionCaret setRimeCompositionCaret ra
   }
 done
 
+grep -q 'UnsatisfiedLinkError' "$rime_file" || {
+  echo "Rime.kt must fall back safely when the packaged legacy libyuyanime.so lacks direct caret JNI symbols" >&2
+  exit 1
+}
+
+grep -q 'moveLegacyCompositionCaret' "$rime_file" || {
+  echo "Rime.kt must keep legacy caret movement for the current runtime library" >&2
+  exit 1
+}
+
 for symbol in selectCandidate selectSchema setOption getAssociateList chooseAssociate getCurrentRimeSchema; do
   grep -q "$symbol" "$rime_file" || {
     echo "Rime.kt must preserve compatibility helper: $symbol" >&2
