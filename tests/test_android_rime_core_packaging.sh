@@ -105,8 +105,18 @@ grep -q 'Verify qiwo-android-rime-core JNI artifacts' "$workflow_file" || {
   exit 1
 }
 
+grep -q 'Verify qiwo-android-rime-core JNI symbols' "$workflow_file" || {
+  echo "Android CI must verify qiwo-android-rime-core JNI symbols before Gradle" >&2
+  exit 1
+}
+
 grep -q 'scripts/verify-artifacts.sh target/android-jniLibs' "$workflow_file" || {
   echo "Android CI must fail when generated libyuyanime.so artifacts are missing" >&2
+  exit 1
+}
+
+grep -q 'scripts/verify-symbols.sh target/android-jniLibs/arm64-v8a/libyuyanime.so' "$workflow_file" || {
+  echo "Android CI must run qiwo-android-rime-core symbol parity verification" >&2
   exit 1
 }
 

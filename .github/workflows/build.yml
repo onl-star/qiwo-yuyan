@@ -75,6 +75,10 @@ jobs:
         working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
         run: scripts/verify-artifacts.sh target/android-jniLibs
 
+      - name: Verify qiwo-android-rime-core JNI symbols
+        working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
+        run: scripts/verify-symbols.sh target/android-jniLibs/arm64-v8a/libyuyanime.so
+
       - name: Setup Rust
         run: |
           rustup toolchain install stable --profile minimal
@@ -260,6 +264,10 @@ jobs:
       - name: Verify qiwo-android-rime-core JNI artifacts
         working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
         run: scripts/verify-artifacts.sh target/android-jniLibs
+
+      - name: Verify qiwo-android-rime-core JNI symbols
+        working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
+        run: scripts/verify-symbols.sh target/android-jniLibs/arm64-v8a/libyuyanime.so
 
       - name: Setup Rust
         run: |
