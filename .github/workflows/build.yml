@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       QIWO_INPUT_FORMAT_CORE_DIR: qiwo-input-format-core
+      QIWO_ANDROID_RIME_CORE_DIR: qiwo-android-rime-core
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -35,6 +36,12 @@ jobs:
           repository: ${{ github.repository_owner }}/qiwo-input-format-core
           path: qiwo-input-format-core
 
+      - name: Checkout qiwo-android-rime-core
+        uses: actions/checkout@v6
+        with:
+          repository: LeaWron/qiwo-android-rime-core
+          path: qiwo-android-rime-core
+
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
@@ -47,7 +54,7 @@ jobs:
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
           NDK_VERSION="26.3.11579264"
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
-          "${SDKMANAGER}" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          "${SDKMANAGER}" "platform-tools" "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1"
           if [ -n "${ANDROID_NDK_HOME:-}" ] && [ -d "${ANDROID_NDK_HOME}" ]; then
             echo "Using preinstalled NDK: ${ANDROID_NDK_HOME}"
           elif [ -n "${ANDROID_NDK_LATEST_HOME:-}" ] && [ -d "${ANDROID_NDK_LATEST_HOME}" ]; then
@@ -58,6 +65,10 @@ jobs:
             ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/${NDK_VERSION}"
           fi
           echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}" >> "${GITHUB_ENV}"
+
+      - name: Build qiwo-android-rime-core JNI libraries
+        working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
+        run: scripts/build-android.sh
 
       - name: Setup Rust
         run: |
@@ -189,6 +200,7 @@ jobs:
       contents: write
     env:
       QIWO_INPUT_FORMAT_CORE_DIR: qiwo-input-format-core
+      QIWO_ANDROID_RIME_CORE_DIR: qiwo-android-rime-core
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -205,6 +217,12 @@ jobs:
           repository: ${{ github.repository_owner }}/qiwo-input-format-core
           path: qiwo-input-format-core
 
+      - name: Checkout qiwo-android-rime-core
+        uses: actions/checkout@v6
+        with:
+          repository: LeaWron/qiwo-android-rime-core
+          path: qiwo-android-rime-core
+
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
@@ -217,7 +235,7 @@ jobs:
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
           NDK_VERSION="26.3.11579264"
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
-          "${SDKMANAGER}" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          "${SDKMANAGER}" "platform-tools" "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1"
           if [ -n "${ANDROID_NDK_HOME:-}" ] && [ -d "${ANDROID_NDK_HOME}" ]; then
             echo "Using preinstalled NDK: ${ANDROID_NDK_HOME}"
           elif [ -n "${ANDROID_NDK_LATEST_HOME:-}" ] && [ -d "${ANDROID_NDK_LATEST_HOME}" ]; then
@@ -228,6 +246,10 @@ jobs:
             ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/${NDK_VERSION}"
           fi
           echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}" >> "${GITHUB_ENV}"
+
+      - name: Build qiwo-android-rime-core JNI libraries
+        working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
+        run: scripts/build-android.sh
 
       - name: Setup Rust
         run: |
