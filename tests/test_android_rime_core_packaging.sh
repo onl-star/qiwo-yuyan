@@ -3,9 +3,15 @@ set -euo pipefail
 
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 gradle_file="$root/yuyansdk/build.gradle"
+workflow_file="$root/.github/workflows/build.yml"
 
 [[ -f "$gradle_file" ]] || {
   echo "Missing yuyansdk build.gradle: $gradle_file" >&2
+  exit 1
+}
+
+[[ -f "$workflow_file" ]] || {
+  echo "Missing Android CI workflow: $workflow_file" >&2
   exit 1
 }
 
@@ -51,5 +57,45 @@ grep -q 'jniLibs.srcDirs' "$gradle_file" || {
 
 grep -q 'dependsOn(verifyQiwoAndroidRimeCoreJniLibs)' "$gradle_file" || {
   echo "yuyansdk preBuild must depend on verifyQiwoAndroidRimeCoreJniLibs" >&2
+  exit 1
+}
+
+grep -q 'QIWO_ANDROID_RIME_CORE_DIR' "$workflow_file" || {
+  echo "Android CI must set QIWO_ANDROID_RIME_CORE_DIR" >&2
+  exit 1
+}
+
+grep -q 'Checkout qiwo-android-rime-core' "$workflow_file" || {
+  echo "Android CI must checkout qiwo-android-rime-core" >&2
+  exit 1
+}
+
+grep -q 'LeaWron/qiwo-android-rime-core' "$workflow_file" || {
+  echo "Android CI must checkout qiwo-android-rime-core from LeaWron" >&2
+  exit 1
+}
+
+grep -q 'Build qiwo-android-rime-core JNI libraries' "$workflow_file" || {
+  echo "Android CI must build qiwo-android-rime-core JNI libraries before Gradle" >&2
+  exit 1
+}
+
+grep -q 'Verify qiwo-android-rime-core JNI artifacts' "$workflow_file" || {
+  echo "Android CI must verify qiwo-android-rime-core JNI artifacts before Gradle" >&2
+  exit 1
+}
+
+grep -q 'scripts/verify-artifacts.sh target/android-jniLibs' "$workflow_file" || {
+  echo "Android CI must fail when generated libyuyanime.so artifacts are missing" >&2
+  exit 1
+}
+
+grep -q 'qiwo-debug-apk-rime-core' "$workflow_file" || {
+  echo "Debug APK artifact name must indicate rime-core backing" >&2
+  exit 1
+}
+
+grep -q 'qiwo-release-apk-rime-core' "$workflow_file" || {
+  echo "Release APK artifact name must indicate rime-core backing" >&2
   exit 1
 }
