@@ -52,6 +52,13 @@ for forbidden in CompositionEditMapping compositionCaretFallback compositionCare
   fi
 done
 
+for forbidden in 'moveNativeCompositionCaret' 'getRimeKeycodeByName("Left")' 'getRimeKeycodeByName("Right")'; do
+  if grep -q "$forbidden" "$rime_engine_file"; then
+    echo "RimeEngine must not simulate composition caret movement with directional keys: $forbidden" >&2
+    exit 1
+  fi
+done
+
 grep -q 'QwertyPinYinUtils.getQwertyComposition' "$rime_engine_file" || {
   echo "RimeEngine must keep the pre-rework qwerty composition display path" >&2
   exit 1
