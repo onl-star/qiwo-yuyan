@@ -77,6 +77,19 @@ grep -q 'trimConfirmedPinyinToVisibleRaw' "$rime_engine_file" || {
   exit 1
 }
 
+for function_name in setCompositionCaret insertCompositionAtCaret deleteCompositionBeforeCaret; do
+  awk -v function_name="$function_name" '
+    $0 ~ "fun " function_name "\\(" { in_func = 1 }
+    in_func && /restoreVisibleRawPinyinCompositionIfNeeded\(\)/ { restored = 1 }
+    in_func && /^    fun / && $0 !~ "fun " function_name "\\(" { in_func = 0 }
+    in_func && /^    private fun / { in_func = 0 }
+    END { exit restored ? 0 : 1 }
+  ' "$rime_engine_file" || {
+    echo "RimeEngine.$function_name must restore visible raw Pinyin before native caret edits" >&2
+    exit 1
+  }
+done
+
 grep -q 'showComposition' "$rime_engine_file" || {
   echo "RimeEngine must consider showComposition when resolving the active segmentation" >&2
   exit 1

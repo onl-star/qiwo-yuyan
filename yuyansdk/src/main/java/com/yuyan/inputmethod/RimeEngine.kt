@@ -301,6 +301,7 @@ object RimeEngine {
     }
 
     fun setCompositionCaret(caret: Int): Boolean {
+        restoreVisibleRawPinyinCompositionIfNeeded()
         if (!isFullKeyboardPinyinCompositionEditable()) {
             clearCompositionCaret()
             return false
@@ -330,6 +331,7 @@ object RimeEngine {
 
     fun insertCompositionAtCaret(key: String): Boolean {
         if (!isCompositionCaretActive()) return false
+        restoreVisibleRawPinyinCompositionIfNeeded()
         val caret = clampCompositionCaret(compositionCaret ?: Rime.compositionText.length)
         compositionCaret = Rime.setCompositionCaret(caret).coerceIn(0, Rime.compositionText.length)
         val handled = processCompositionTextKey(key)
@@ -343,6 +345,7 @@ object RimeEngine {
 
     fun deleteCompositionBeforeCaret(): Boolean {
         if (!isCompositionCaretActive()) return false
+        restoreVisibleRawPinyinCompositionIfNeeded()
         val caret = clampCompositionCaret(compositionCaret ?: Rime.compositionText.length)
         if (caret <= 0) return true
         compositionCaret = Rime.setCompositionCaret(caret).coerceIn(0, Rime.compositionText.length)
