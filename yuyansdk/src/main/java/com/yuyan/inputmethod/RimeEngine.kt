@@ -310,7 +310,8 @@ object RimeEngine {
             clearCompositionCaret()
             return false
         }
-        compositionCaret = moveNativeCompositionCaret(caret.coerceIn(0, composition.length))
+        compositionCaret = Rime.setCompositionCaret(caret.coerceIn(0, composition.length))
+            .coerceIn(0, composition.length)
         compositionCaretActive = true
         return true
     }
@@ -329,7 +330,8 @@ object RimeEngine {
 
     fun insertCompositionAtCaret(key: String): Boolean {
         if (!isCompositionCaretActive()) return false
-        val caret = moveNativeCompositionCaret(compositionCaret ?: Rime.compositionText.length)
+        val caret = clampCompositionCaret(compositionCaret ?: Rime.compositionText.length)
+        compositionCaret = Rime.setCompositionCaret(caret).coerceIn(0, Rime.compositionText.length)
         val handled = processCompositionTextKey(key)
         updateCandidatesOrCommitText()
         if (handled) {
@@ -343,7 +345,7 @@ object RimeEngine {
         if (!isCompositionCaretActive()) return false
         val caret = clampCompositionCaret(compositionCaret ?: Rime.compositionText.length)
         if (caret <= 0) return true
-        moveNativeCompositionCaret(caret)
+        compositionCaret = Rime.setCompositionCaret(caret).coerceIn(0, Rime.compositionText.length)
         Rime.processKey(getRimeKeycodeByName("BackSpace"), 0)
         updateCandidatesOrCommitText()
         keyRecordStack.clear()
@@ -355,24 +357,8 @@ object RimeEngine {
         return caret.coerceIn(0, Rime.compositionText.length)
     }
 
-    private fun moveNativeCompositionCaret(targetCaret: Int): Int {
-        val target = clampCompositionCaret(targetCaret)
-        var current = nativeCompositionCaret()
-        val keyName = if (target < current) "Left" else "Right"
-        val keyCode = getRimeKeycodeByName(keyName)
-        while (current != target && keyCode > 0) {
-            val moved = Rime.processKey(keyCode, 0)
-            val next = nativeCompositionCaret()
-            if (!moved || next == current) break
-            current = next
-        }
-        val actual = nativeCompositionCaret().coerceIn(0, Rime.compositionText.length)
-        compositionCaret = actual
-        return actual
-    }
-
     private fun nativeCompositionCaret(): Int {
-        return Rime.composition?.cursorPos ?: Rime.compositionText.length
+        return Rime.compositionCaret()
     }
 
     private fun processCompositionTextKey(key: String): Boolean {
