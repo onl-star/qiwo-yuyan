@@ -28,6 +28,11 @@ def qiwoInputFormatAndroidTargets = [
         'x86'        : 'i686-linux-android',
         'x86_64'     : 'x86_64-linux-android',
 ]
+def qiwoAndroidRimeCorePath = System.getenv('QIWO_ANDROID_RIME_CORE_DIR') ?: '../qiwo-android-rime-core'
+def qiwoAndroidRimeCoreDir = rootProject.file(qiwoAndroidRimeCorePath)
+def qiwoAndroidRimeCorePrebuiltJniLibsDir = new File(qiwoAndroidRimeCoreDir, 'target/android-jniLibs')
+def qiwoAndroidRimeCoreGeneratedJniLibsDir = file("$buildDir/generated/jniLibs/qiwoAndroidRimeCore")
+def qiwoAndroidRimeCoreAbis = ['arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64']
 
 def copyQiwoInputFormatJniLibs = tasks.register('copyQiwoInputFormatJniLibs', Copy) {
     into(qiwoInputFormatGeneratedJniLibsDir)
@@ -56,6 +61,31 @@ def verifyQiwoInputFormatJniLibs = tasks.register('verifyQiwoInputFormatJniLibs'
                     "Missing libqiwo_input_format.so for Android ABI(s): ${missingAbis.join(', ')}. " +
                             "Build qiwo-input-format-core for Android targets or place prebuilt libs under " +
                             "${qiwoInputFormatPrebuiltJniLibsDir}.")
+        }
+    }
+}
+
+def copyQiwoAndroidRimeCoreJniLibs = tasks.register('copyQiwoAndroidRimeCoreJniLibs', Copy) {
+    from(qiwoAndroidRimeCorePrebuiltJniLibsDir) {
+        include '**/libyuyanime.so'
+    }
+    into(qiwoAndroidRimeCoreGeneratedJniLibsDir)
+    onlyIf {
+        qiwoAndroidRimeCorePrebuiltJniLibsDir.exists()
+    }
+}
+
+def verifyQiwoAndroidRimeCoreJniLibs = tasks.register('verifyQiwoAndroidRimeCoreJniLibs') {
+    dependsOn(copyQiwoAndroidRimeCoreJniLibs)
+    doLast {
+        def missingAbis = qiwoAndroidRimeCoreAbis.findAll { abi ->
+            !new File(qiwoAndroidRimeCoreGeneratedJniLibsDir, "${abi}/libyuyanime.so").exists()
+        }
+        if (!missingAbis.isEmpty()) {
+            throw new GradleException(
+                    "Missing libyuyanime.so for Android ABI(s): ${missingAbis.join(', ')}. " +
+                            "Build qiwo-android-rime-core and place outputs under " +
+                            "${qiwoAndroidRimeCorePrebuiltJniLibsDir}.")
         }
     }
 }
@@ -113,7 +143,18 @@ android {
     }
     sourceSets {
         offline {
-            jniLibs.srcDirs = ['libs', qiwoInputFormatPrebuiltJniLibsDir, qiwoInputFormatGeneratedJniLibsDir]
+            jniLibs.srcDirs = [
+                    qiwoAndroidRimeCoreGeneratedJniLibsDir,
+                    'libs',
+                    qiwoInputFormatPrebuiltJniLibsDir,
+                    qiwoInputFormatGeneratedJniLibsDir
+            ]
+        }
+    }
+
+    packagingOptions {
+        jniLibs {
+            pickFirsts += ['**/libyuyanime.so']
         }
     }
 
@@ -126,6 +167,7 @@ android {
 
 tasks.matching { it.name == 'preBuild' }.configureEach {
     dependsOn(verifyQiwoInputFormatJniLibs)
+    dependsOn(verifyQiwoAndroidRimeCoreJniLibs)
 }
 
 dependencies {
