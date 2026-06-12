@@ -1,6 +1,7 @@
 package com.yuyan.inputmethod.core
 
 import android.content.Context
+import android.util.Log
 import com.yuyan.imemodule.application.CustomConstant
 import com.yuyan.imemodule.application.Launcher
 import kotlin.system.measureTimeMillis
@@ -12,6 +13,7 @@ class Rime(fullCheck: Boolean) {
     }
 
     companion object {
+        private const val TAG = "QiwoRimeCore"
         private var instance: Rime? = null
         private var mContext: RimeContext? = null
         private var mStatus: RimeStatus? = null
@@ -24,10 +26,18 @@ class Rime(fullCheck: Boolean) {
         }
 
         init {
-            System.loadLibrary("yuyanime")
+            try {
+                Log.i(TAG, "loading JNI library yuyanime")
+                System.loadLibrary("yuyanime")
+                Log.i(TAG, "loaded JNI library yuyanime")
+            } catch (error: UnsatisfiedLinkError) {
+                Log.e(TAG, "failed to load JNI library yuyanime", error)
+                throw error
+            }
         }
 
         fun startup(context: Context, fullCheck: Boolean) {
+            Log.i(TAG, "startupRime sharedDir=${CustomConstant.RIME_DICT_PATH} userDir=${CustomConstant.RIME_DICT_PATH} fullCheck=$fullCheck")
             startupRime(context, CustomConstant.RIME_DICT_PATH, CustomConstant.RIME_DICT_PATH, fullCheck)
             updateStatus()
         }
@@ -126,6 +136,7 @@ class Rime(fullCheck: Boolean) {
             return try {
                 getRimeRawInput()
             } catch (_: UnsatisfiedLinkError) {
+                Log.w(TAG, "direct raw input JNI is unavailable; using composition preedit")
                 directCompositionCaretAvailable = false
                 compositionText
             }
@@ -139,6 +150,7 @@ class Rime(fullCheck: Boolean) {
             return try {
                 getRimeCompositionCaret()
             } catch (_: UnsatisfiedLinkError) {
+                Log.w(TAG, "direct composition caret JNI is unavailable; using context cursor")
                 directCompositionCaretAvailable = false
                 composition?.cursorPos?.coerceIn(0, compositionText.length) ?: compositionText.length
             }
@@ -150,10 +162,13 @@ class Rime(fullCheck: Boolean) {
                 return moveLegacyCompositionCaret(caretPos)
             }
             return try {
+                Log.i(TAG, "set direct composition caret target=$caretPos")
                 setRimeCompositionCaret(caretPos).also {
+                    Log.i(TAG, "set direct composition caret result=$it")
                     updateContext()
                 }
             } catch (_: UnsatisfiedLinkError) {
+                Log.w(TAG, "direct composition caret JNI is unavailable; using legacy caret movement")
                 directCompositionCaretAvailable = false
                 moveLegacyCompositionCaret(caretPos)
             }
@@ -164,9 +179,11 @@ class Rime(fullCheck: Boolean) {
             return try {
                 getRimeCompositionCaret()
                 directCompositionCaretAvailable = true
+                Log.i(TAG, "direct composition caret JNI is available")
                 true
             } catch (_: UnsatisfiedLinkError) {
                 directCompositionCaretAvailable = false
+                Log.w(TAG, "direct composition caret JNI is unavailable")
                 false
             }
         }
@@ -186,7 +203,9 @@ class Rime(fullCheck: Boolean) {
             }
 
             updateContext()
-            return composition?.cursorPos?.coerceIn(0, compositionText.length) ?: target
+            val result = composition?.cursorPos?.coerceIn(0, compositionText.length) ?: target
+            Log.i(TAG, "moved legacy composition caret target=$target result=$result length=${compositionText.length}")
+            return result
         }
 
         private fun moveLegacyCaret(keyName: String, steps: Int) {

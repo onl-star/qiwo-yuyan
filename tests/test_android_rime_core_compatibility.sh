@@ -41,6 +41,21 @@ grep -q 'moveLegacyCompositionCaret' "$rime_file" || {
   exit 1
 }
 
+grep -q 'QiwoRimeCore' "$rime_file" || {
+  echo "Rime.kt must emit QiwoRimeCore logcat diagnostics for runtime verification" >&2
+  exit 1
+}
+
+grep -q 'loaded JNI library yuyanime' "$rime_file" || {
+  echo "Rime.kt must log JNI library load success for device diagnosis" >&2
+  exit 1
+}
+
+grep -q 'direct composition caret JNI' "$rime_file" || {
+  echo "Rime.kt must log direct caret JNI availability for device diagnosis" >&2
+  exit 1
+}
+
 for symbol in selectCandidate selectSchema setOption getAssociateList chooseAssociate getCurrentRimeSchema; do
   grep -q "$symbol" "$rime_file" || {
     echo "Rime.kt must preserve compatibility helper: $symbol" >&2
