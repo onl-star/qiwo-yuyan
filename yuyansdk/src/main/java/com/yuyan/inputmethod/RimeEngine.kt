@@ -286,7 +286,7 @@ object RimeEngine {
     }
 
     fun compositionTextForEditing(): String {
-        return if (isFullKeyboardPinyinCompositionEditable()) showComposition else ""
+        return if (isFullKeyboardPinyinCompositionEditable()) Rime.compositionText else ""
     }
 
     fun compositionTextForCaretDisplay(): String {
@@ -310,7 +310,7 @@ object RimeEngine {
             clearCompositionCaret()
             return false
         }
-        compositionCaret = caret.coerceIn(0, composition.length)
+        compositionCaret = moveNativeCompositionCaret(caret.coerceIn(0, composition.length))
         compositionCaretActive = true
         return true
     }
@@ -329,25 +329,25 @@ object RimeEngine {
 
     fun insertCompositionAtCaret(key: String): Boolean {
         if (!isCompositionCaretActive()) return false
-        val caret = clampCompositionCaret(compositionCaret ?: Rime.compositionText.length)
-        val replaced = Rime.replaceKey(caret, 0, key)
+        val caret = moveNativeCompositionCaret(compositionCaret ?: Rime.compositionText.length)
+        val handled = processCompositionTextKey(key)
         updateCandidatesOrCommitText()
-        if (replaced) {
-            syncCompositionCaretAfterEdit(caret + key.length)
+        if (handled) {
+            keyRecordStack.clear()
+            syncCompositionCaretAfterNativeEdit()
         }
-        return replaced
+        return handled
     }
 
     fun deleteCompositionBeforeCaret(): Boolean {
         if (!isCompositionCaretActive()) return false
         val caret = clampCompositionCaret(compositionCaret ?: Rime.compositionText.length)
         if (caret <= 0) return true
-        val deleteIndex = caret - 1
-        val replaced = Rime.replaceKey(deleteIndex, 1, "")
+        moveNativeCompositionCaret(caret)
+        Rime.processKey(getRimeKeycodeByName("BackSpace"), 0)
         updateCandidatesOrCommitText()
-        if (replaced) {
-            syncCompositionCaretAfterEdit(deleteIndex)
-        }
+        keyRecordStack.clear()
+        syncCompositionCaretAfterNativeEdit()
         return true
     }
 
@@ -355,9 +355,34 @@ object RimeEngine {
         return caret.coerceIn(0, Rime.compositionText.length)
     }
 
-    private fun syncCompositionCaretAfterEdit(preferredCaret: Int) {
+    private fun moveNativeCompositionCaret(targetCaret: Int): Int {
+        val target = clampCompositionCaret(targetCaret)
+        var current = nativeCompositionCaret()
+        val keyName = if (target < current) "Left" else "Right"
+        val keyCode = getRimeKeycodeByName(keyName)
+        while (current != target && keyCode > 0) {
+            val moved = Rime.processKey(keyCode, 0)
+            val next = nativeCompositionCaret()
+            if (!moved || next == current) break
+            current = next
+        }
+        val actual = nativeCompositionCaret().coerceIn(0, Rime.compositionText.length)
+        compositionCaret = actual
+        return actual
+    }
+
+    private fun nativeCompositionCaret(): Int {
+        return Rime.composition?.cursorPos ?: Rime.compositionText.length
+    }
+
+    private fun processCompositionTextKey(key: String): Boolean {
+        if (key.length != 1) return false
+        return Rime.processKey(key[0].code, 0)
+    }
+
+    private fun syncCompositionCaretAfterNativeEdit() {
         if (isFullKeyboardPinyinCompositionEditable()) {
-            compositionCaret = clampCompositionCaret(preferredCaret)
+            compositionCaret = nativeCompositionCaret().coerceIn(0, Rime.compositionText.length)
             compositionCaretActive = true
         } else {
             clearCompositionCaret()

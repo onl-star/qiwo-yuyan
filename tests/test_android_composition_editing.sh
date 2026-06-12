@@ -36,7 +36,7 @@ done
 }
 
 grep -q 'private var compositionCaret: Int?' "$rime_engine_file" || {
-  echo "RimeEngine must use a simple Android-owned composition caret" >&2
+  echo "RimeEngine must keep the composition caret state used by the editor UI" >&2
   exit 1
 }
 
@@ -73,24 +73,31 @@ done
 
 awk '
   /fun insertCompositionAtCaret\(/ { in_func = 1 }
-  in_func && /Rime\.replaceKey\(caret, 0, key\)/ { found = 1 }
-  in_func && /replaceCompositionWithEditableText|CompositionEditMapping|Rime\.setCompositionCaret|Rime\.processKey/ { exit 1 }
+  in_func && /moveNativeCompositionCaret/ { moved = 1 }
+  in_func && /processCompositionTextKey/ { typed = 1 }
+  in_func && /Rime\.replaceKey|replaceCompositionWithEditableText|CompositionEditMapping|Rime\.setCompositionCaret/ { exit 1 }
   in_func && /^    fun / && !/fun insertCompositionAtCaret\(/ { in_func = 0 }
-  END { exit found ? 0 : 1 }
+  END { exit moved && typed ? 0 : 1 }
 ' "$rime_engine_file" || {
-  echo "RimeEngine.insertCompositionAtCaret must use the simple caret replace path" >&2
+  echo "RimeEngine.insertCompositionAtCaret must move the native Rime caret before sending the typed key" >&2
   exit 1
 }
 
 awk '
   /fun deleteCompositionBeforeCaret\(/ { in_func = 1 }
   in_func && /if \(caret <= 0\) return true/ { guarded = 1 }
-  in_func && /Rime\.replaceKey\(deleteIndex, 1, ""\)/ { replaced = 1 }
-  in_func && /replaceCompositionWithEditableText|CompositionEditMapping|Rime\.setCompositionCaret|Rime\.processKey/ { exit 1 }
+  in_func && /moveNativeCompositionCaret\(caret\)/ { moved = 1 }
+  in_func && /Rime\.processKey\(getRimeKeycodeByName\("BackSpace"\), 0\)/ { deleted = 1 }
+  in_func && /Rime\.replaceKey|replaceCompositionWithEditableText|CompositionEditMapping|Rime\.setCompositionCaret/ { exit 1 }
   in_func && /^    private fun / { in_func = 0 }
-  END { exit guarded && replaced ? 0 : 1 }
+  END { exit guarded && moved && deleted ? 0 : 1 }
 ' "$rime_engine_file" || {
-  echo "RimeEngine.deleteCompositionBeforeCaret must consume beginning-of-composition deletes without falling back or getting stuck" >&2
+  echo "RimeEngine.deleteCompositionBeforeCaret must consume boundary deletes and use native Rime backspace" >&2
+  exit 1
+}
+
+grep -q 'private fun moveNativeCompositionCaret' "$rime_engine_file" || {
+  echo "RimeEngine must isolate native Rime caret movement" >&2
   exit 1
 }
 
