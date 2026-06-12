@@ -40,6 +40,16 @@ grep -q 'qiwoAndroidRimeCorePackage' "$gradle_file" || {
   exit 1
 }
 
+grep -q 'libqiwo_legacy_yuyanime.so' "$gradle_file" || {
+  echo "yuyansdk build.gradle must package the legacy Rime backend under a distinct library name when generated core is enabled" >&2
+  exit 1
+}
+
+grep -q "rename 'libyuyanime.so', 'libqiwo_legacy_yuyanime.so'" "$gradle_file" || {
+  echo "yuyansdk build.gradle must rename the legacy Rime runtime for the generated wrapper core" >&2
+  exit 1
+}
+
 grep -q 'copyQiwoAndroidRimeCoreJniLibs' "$gradle_file" || {
   echo "yuyansdk build.gradle must copy qiwo-android-rime-core JNI libraries into generated jniLibs" >&2
   exit 1

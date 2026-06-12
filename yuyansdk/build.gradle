@@ -103,6 +103,15 @@ def copyQiwoAndroidLegacyJniLibs = tasks.register('copyQiwoAndroidLegacyJniLibs'
             exclude '**/libyuyanime.so'
         }
     }
+    if (qiwoAndroidRimeCorePackage) {
+        qiwoAndroidRimeCoreAbis.each { abi ->
+            from("libs/${abi}") {
+                include 'libyuyanime.so'
+                into abi
+                rename 'libyuyanime.so', 'libqiwo_legacy_yuyanime.so'
+            }
+        }
+    }
     into(qiwoAndroidLegacyJniLibsDir)
 }
 
