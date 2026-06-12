@@ -70,6 +70,10 @@ jobs:
         working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
         run: scripts/build-android.sh
 
+      - name: Verify qiwo-android-rime-core JNI artifacts
+        working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
+        run: scripts/verify-artifacts.sh target/android-jniLibs
+
       - name: Setup Rust
         run: |
           rustup toolchain install stable --profile minimal
@@ -250,6 +254,10 @@ jobs:
       - name: Build qiwo-android-rime-core JNI libraries
         working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
         run: scripts/build-android.sh
+
+      - name: Verify qiwo-android-rime-core JNI artifacts
+        working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
+        run: scripts/verify-artifacts.sh target/android-jniLibs
 
       - name: Setup Rust
         run: |
