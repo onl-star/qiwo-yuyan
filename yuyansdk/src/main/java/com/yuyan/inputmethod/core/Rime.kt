@@ -120,6 +120,23 @@ class Rime(fullCheck: Boolean) {
         }
 
         @JvmStatic
+        fun rawInput(): String {
+            return getRimeRawInput()
+        }
+
+        @JvmStatic
+        fun compositionCaret(): Int {
+            return getRimeCompositionCaret()
+        }
+
+        @JvmStatic
+        fun setCompositionCaret(caretPos: Int): Int {
+            return setRimeCompositionCaret(caretPos).also {
+                updateContext()
+            }
+        }
+
+        @JvmStatic
         external fun startupRime(context: Context, sharedDir: String, userDir: String, fullCheck: Boolean, )
 
         @JvmStatic
@@ -166,5 +183,14 @@ class Rime(fullCheck: Boolean) {
 
         @JvmStatic
         external fun selectRimeAssociate(index: Int): Boolean
+
+        @JvmStatic
+        external fun getRimeRawInput(): String
+
+        @JvmStatic
+        external fun getRimeCompositionCaret(): Int
+
+        @JvmStatic
+        external fun setRimeCompositionCaret(caretPos: Int): Int
     }
 }
