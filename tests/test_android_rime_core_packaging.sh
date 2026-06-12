@@ -100,8 +100,8 @@ grep -q 'QIWO_ANDROID_RIME_CORE_DIR' "$workflow_file" || {
   exit 1
 }
 
-grep -q 'QIWO_ANDROID_RIME_CORE_PACKAGE: "false"' "$workflow_file" || {
-  echo "Android CI must not package the generated Rime core until runtime parity is proven" >&2
+grep -q 'QIWO_ANDROID_RIME_CORE_PACKAGE: "true"' "$workflow_file" || {
+  echo "Android CI must package the generated Rime core wrapper for APK runtime verification" >&2
   exit 1
 }
 
@@ -145,12 +145,12 @@ grep -q 'scripts/verify-symbols.sh target/android-jniLibs/arm64-v8a/libyuyanime.
   exit 1
 }
 
-grep -q 'qiwo-debug-apk-rime-core-checked' "$workflow_file" || {
-  echo "Debug APK artifact name must indicate rime-core verification without implying runtime replacement" >&2
+grep -q 'qiwo-debug-apk-rime-core-wrapper' "$workflow_file" || {
+  echo "Debug APK artifact name must indicate rime-core wrapper runtime replacement" >&2
   exit 1
 }
 
-grep -q 'qiwo-release-apk-rime-core-checked' "$workflow_file" || {
-  echo "Release APK artifact name must indicate rime-core verification without implying runtime replacement" >&2
+grep -q 'qiwo-release-apk-rime-core-wrapper' "$workflow_file" || {
+  echo "Release APK artifact name must indicate rime-core wrapper runtime replacement" >&2
   exit 1
 }
