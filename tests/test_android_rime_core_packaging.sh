@@ -50,6 +50,21 @@ grep -q 'qiwoAndroidRimeCoreGeneratedJniLibsDir' "$gradle_file" || {
   exit 1
 }
 
+grep -q 'qiwoAndroidLegacyJniLibsDir' "$gradle_file" || {
+  echo "yuyansdk build.gradle must stage legacy JNI libs through a filtered generated directory" >&2
+  exit 1
+}
+
+grep -q 'copyQiwoAndroidLegacyJniLibs' "$gradle_file" || {
+  echo "yuyansdk build.gradle must copy legacy JNI libs separately from generated Rime core libs" >&2
+  exit 1
+}
+
+grep -q "exclude '\\*\\*/libyuyanime.so'" "$gradle_file" || {
+  echo "yuyansdk build.gradle must exclude fallback libyuyanime.so when generated Rime core libs are packaged" >&2
+  exit 1
+}
+
 grep -q 'jniLibs.srcDirs' "$gradle_file" || {
   echo "yuyansdk build.gradle must configure jniLibs packaging" >&2
   exit 1

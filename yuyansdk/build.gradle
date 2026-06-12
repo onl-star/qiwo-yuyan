@@ -32,6 +32,7 @@ def qiwoAndroidRimeCorePath = System.getenv('QIWO_ANDROID_RIME_CORE_DIR') ?: '..
 def qiwoAndroidRimeCoreDir = rootProject.file(qiwoAndroidRimeCorePath)
 def qiwoAndroidRimeCorePrebuiltJniLibsDir = new File(qiwoAndroidRimeCoreDir, 'target/android-jniLibs')
 def qiwoAndroidRimeCoreGeneratedJniLibsDir = file("$buildDir/generated/jniLibs/qiwoAndroidRimeCore")
+def qiwoAndroidLegacyJniLibsDir = file("$buildDir/generated/jniLibs/qiwoAndroidLegacy")
 def qiwoAndroidRimeCoreAbis = ['arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64']
 
 def copyQiwoInputFormatJniLibs = tasks.register('copyQiwoInputFormatJniLibs', Copy) {
@@ -90,6 +91,13 @@ def verifyQiwoAndroidRimeCoreJniLibs = tasks.register('verifyQiwoAndroidRimeCore
     }
 }
 
+def copyQiwoAndroidLegacyJniLibs = tasks.register('copyQiwoAndroidLegacyJniLibs', Copy) {
+    from('libs') {
+        exclude '**/libyuyanime.so'
+    }
+    into(qiwoAndroidLegacyJniLibsDir)
+}
+
 
 android {
     compileSdk 36
@@ -145,7 +153,7 @@ android {
         offline {
             jniLibs.srcDirs = [
                     qiwoAndroidRimeCoreGeneratedJniLibsDir,
-                    'libs',
+                    qiwoAndroidLegacyJniLibsDir,
                     qiwoInputFormatPrebuiltJniLibsDir,
                     qiwoInputFormatGeneratedJniLibsDir
             ]
@@ -168,6 +176,7 @@ android {
 tasks.matching { it.name == 'preBuild' }.configureEach {
     dependsOn(verifyQiwoInputFormatJniLibs)
     dependsOn(verifyQiwoAndroidRimeCoreJniLibs)
+    dependsOn(copyQiwoAndroidLegacyJniLibs)
 }
 
 dependencies {
