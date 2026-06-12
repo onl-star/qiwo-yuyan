@@ -195,6 +195,9 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleOfflineDebug
 
+      - name: Verify Debug APK Rime Core Contents
+        run: bash tests/verify_android_rime_core_apk_artifact.sh app/build/outputs/apk/offline/debug/*.apk
+
       - name: Upload Debug APK
         uses: actions/upload-artifact@v7
         with:
