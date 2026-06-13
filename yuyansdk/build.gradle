@@ -35,6 +35,7 @@ def qiwoAndroidRimeCoreGeneratedJniLibsDir = file("$buildDir/generated/jniLibs/q
 def qiwoAndroidRimeCoreStlGeneratedJniLibsDir = file("$buildDir/generated/jniLibs/qiwoAndroidRimeCoreStl")
 def qiwoAndroidLegacyJniLibsDir = file("$buildDir/generated/jniLibs/qiwoAndroidLegacy")
 def qiwoAndroidRimeCoreAbis = ['arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64']
+def qiwoAndroidRimeCoreRequiredLibs = ['libyuyanime.so', 'librime.so']
 def qiwoAndroidRimeCoreStlTriples = [
         'arm64-v8a'  : 'aarch64-linux-android',
         'armeabi-v7a': 'arm-linux-androideabi',
@@ -99,7 +100,9 @@ def verifyQiwoInputFormatJniLibs = tasks.register('verifyQiwoInputFormatJniLibs'
 
 def copyQiwoAndroidRimeCoreJniLibs = tasks.register('copyQiwoAndroidRimeCoreJniLibs', Copy) {
     from(qiwoAndroidRimeCorePrebuiltJniLibsDir) {
-        include '**/libyuyanime.so'
+        qiwoAndroidRimeCoreRequiredLibs.each { libName ->
+            include "**/${libName}"
+        }
     }
     into(qiwoAndroidRimeCoreGeneratedJniLibsDir)
     onlyIf {
@@ -113,12 +116,17 @@ def verifyQiwoAndroidRimeCoreJniLibs = tasks.register('verifyQiwoAndroidRimeCore
         if (!qiwoAndroidRimeCorePackage) {
             return
         }
-        def missingAbis = qiwoAndroidRimeCoreAbis.findAll { abi ->
-            !new File(qiwoAndroidRimeCoreGeneratedJniLibsDir, "${abi}/libyuyanime.so").exists()
+        def missingLibs = []
+        qiwoAndroidRimeCoreAbis.each { abi ->
+            qiwoAndroidRimeCoreRequiredLibs.each { libName ->
+                if (!new File(qiwoAndroidRimeCoreGeneratedJniLibsDir, "${abi}/${libName}").exists()) {
+                    missingLibs.add("${abi}/${libName}")
+                }
+            }
         }
-        if (!missingAbis.isEmpty()) {
+        if (!missingLibs.isEmpty()) {
             throw new GradleException(
-                    "Missing libyuyanime.so for Android ABI(s): ${missingAbis.join(', ')}. " +
+                    "Missing qiwo-android-rime-core library artifact(s): ${missingLibs.join(', ')}. " +
                             "Build qiwo-android-rime-core and place outputs under " +
                             "${qiwoAndroidRimeCorePrebuiltJniLibsDir}.")
         }
