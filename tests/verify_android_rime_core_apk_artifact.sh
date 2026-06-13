@@ -26,13 +26,18 @@ for apk in "$@"; do
     exit 1
   }
 
-  grep -q '^lib/arm64-v8a/libqiwo_legacy_yuyanime\.so$' <<<"${entries}" || {
-    echo "APK must contain legacy backend lib/arm64-v8a/libqiwo_legacy_yuyanime.so: ${apk}" >&2
+  grep -q '^lib/arm64-v8a/librime\.so$' <<<"${entries}" || {
+    echo "APK must contain full Rime runtime lib/arm64-v8a/librime.so: ${apk}" >&2
     exit 1
   }
 
+  if grep -q '^lib/arm64-v8a/libqiwo_legacy_yuyanime\.so$' <<<"${entries}"; then
+    echo "APK must not contain legacy backend lib/arm64-v8a/libqiwo_legacy_yuyanime.so: ${apk}" >&2
+    exit 1
+  fi
+
   grep -q '^lib/arm64-v8a/libc++_shared\.so$' <<<"${entries}" || {
-    echo "APK must contain Android C++ runtime lib/arm64-v8a/libc++_shared.so for the Rime core wrapper: ${apk}" >&2
+    echo "APK must contain Android C++ runtime lib/arm64-v8a/libc++_shared.so for the full Rime core: ${apk}" >&2
     exit 1
   }
 
@@ -41,8 +46,8 @@ for apk in "$@"; do
     exit 1
   }
 
-  zipinfo -l "${apk}" 'lib/arm64-v8a/libqiwo_legacy_yuyanime.so' | grep -q 'lib/arm64-v8a/libqiwo_legacy_yuyanime\.so' || {
-    echo "APK legacy backend library entry is not readable: ${apk}" >&2
+  zipinfo -l "${apk}" 'lib/arm64-v8a/librime.so' | grep -q 'lib/arm64-v8a/librime\.so' || {
+    echo "APK full Rime runtime library entry is not readable: ${apk}" >&2
     exit 1
   }
 

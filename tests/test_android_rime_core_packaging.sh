@@ -42,6 +42,11 @@ grep -q 'libyuyanime.so' "$gradle_file" || {
   exit 1
 }
 
+grep -q 'librime.so' "$gradle_file" || {
+  echo "yuyansdk build.gradle must package librime.so for the full Rime runtime" >&2
+  exit 1
+}
+
 grep -q 'QIWO_ANDROID_RIME_CORE_PACKAGE' "$gradle_file" || {
   echo "yuyansdk build.gradle must gate generated Rime core packaging behind QIWO_ANDROID_RIME_CORE_PACKAGE" >&2
   exit 1
@@ -52,20 +57,20 @@ grep -q 'qiwoAndroidRimeCorePackage' "$gradle_file" || {
   exit 1
 }
 
-grep -q 'libqiwo_legacy_yuyanime.so' "$gradle_file" || {
-  echo "yuyansdk build.gradle must package the legacy Rime backend under a distinct library name when generated core is enabled" >&2
+if grep -q 'libqiwo_legacy_yuyanime.so' "$gradle_file"; then
+  echo "yuyansdk build.gradle must not package the legacy Rime backend for full-frost core builds" >&2
   exit 1
-}
+fi
 
 grep -q 'libc++_shared.so' "$gradle_file" || {
-  echo "yuyansdk build.gradle must package Android C++ runtime for the generated Rime core wrapper" >&2
+  echo "yuyansdk build.gradle must package Android C++ runtime for the generated full Rime core" >&2
   exit 1
 }
 
-grep -q "rename 'libyuyanime.so', 'libqiwo_legacy_yuyanime.so'" "$gradle_file" || {
-  echo "yuyansdk build.gradle must rename the legacy Rime runtime for the generated wrapper core" >&2
+if grep -q "rename 'libyuyanime.so', 'libqiwo_legacy_yuyanime.so'" "$gradle_file"; then
+  echo "yuyansdk build.gradle must not rename the legacy Rime runtime for full-frost core builds" >&2
   exit 1
-}
+fi
 
 grep -q 'copyQiwoAndroidRimeCoreJniLibs' "$gradle_file" || {
   echo "yuyansdk build.gradle must copy qiwo-android-rime-core JNI libraries into generated jniLibs" >&2
@@ -88,7 +93,7 @@ grep -q 'qiwoAndroidRimeCoreGeneratedJniLibsDir' "$gradle_file" || {
 }
 
 grep -q 'qiwoAndroidRimeCoreStlGeneratedJniLibsDir' "$gradle_file" || {
-  echo "yuyansdk build.gradle must stage Android C++ runtime for the generated Rime core wrapper" >&2
+  echo "yuyansdk build.gradle must stage Android C++ runtime for the generated full Rime core" >&2
   exit 1
 }
 
@@ -107,20 +112,20 @@ grep -q 'verifyQiwoAndroidRimeCoreStlJniLibs' "$gradle_file" || {
   exit 1
 }
 
-grep -q 'qiwoAndroidLegacyJniLibsDir' "$gradle_file" || {
-  echo "yuyansdk build.gradle must stage legacy JNI libs through a filtered generated directory" >&2
+if grep -q 'qiwoAndroidLegacyJniLibsDir' "$gradle_file"; then
+  echo "yuyansdk build.gradle must not stage legacy JNI libs for full-frost core builds" >&2
   exit 1
-}
+fi
 
-grep -q 'copyQiwoAndroidLegacyJniLibs' "$gradle_file" || {
-  echo "yuyansdk build.gradle must copy legacy JNI libs separately from generated Rime core libs" >&2
+if grep -q 'copyQiwoAndroidLegacyJniLibs' "$gradle_file"; then
+  echo "yuyansdk build.gradle must not copy legacy JNI libs for full-frost core builds" >&2
   exit 1
-}
+fi
 
-grep -q 'if (qiwoAndroidRimeCorePackage)' "$gradle_file" || {
-  echo "yuyansdk build.gradle must exclude fallback libyuyanime.so only when generated Rime core libs are explicitly packaged" >&2
+if grep -q 'exclude fallback libyuyanime.so' "$gradle_file"; then
+  echo "yuyansdk build.gradle must not rely on fallback libyuyanime.so behavior for full-frost core builds" >&2
   exit 1
-}
+fi
 
 grep -q 'jniLibs.srcDirs' "$gradle_file" || {
   echo "yuyansdk build.gradle must configure jniLibs packaging" >&2
@@ -197,13 +202,13 @@ grep -q 'scripts/verify-symbols.sh target/android-jniLibs/arm64-v8a/libyuyanime.
   exit 1
 }
 
-grep -q 'qiwo-debug-apk-rime-core-wrapper' "$workflow_file" || {
-  echo "Debug APK artifact name must indicate rime-core wrapper runtime replacement" >&2
+grep -q 'qiwo-debug-apk-rime-frost-core' "$workflow_file" || {
+  echo "Debug APK artifact name must indicate full-frost rime-core runtime replacement" >&2
   exit 1
 }
 
-grep -q 'qiwo-release-apk-rime-core-wrapper' "$workflow_file" || {
-  echo "Release APK artifact name must indicate rime-core wrapper runtime replacement" >&2
+grep -q 'qiwo-release-apk-rime-frost-core' "$workflow_file" || {
+  echo "Release APK artifact name must indicate full-frost rime-core runtime replacement" >&2
   exit 1
 }
 
@@ -212,8 +217,13 @@ grep -q 'verify_android_rime_core_apk_artifact.sh' "$workflow_file" || {
   exit 1
 }
 
+grep -q 'librime.so' "$artifact_verify_file" || {
+  echo "APK artifact verifier must assert the packaged full Rime runtime library" >&2
+  exit 1
+}
+
 grep -q 'libqiwo_legacy_yuyanime.so' "$artifact_verify_file" || {
-  echo "APK artifact verifier must assert the packaged legacy Rime backend library" >&2
+  echo "APK artifact verifier must reject the legacy Rime backend library" >&2
   exit 1
 }
 
