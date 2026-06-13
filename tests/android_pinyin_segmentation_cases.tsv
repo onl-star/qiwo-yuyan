@@ -1,10 +1,10 @@
 name	mode	raw	confirmed	expected_choices	expected_display_choices	expected_active	selected_index	expected_selected	expected_query	expected_visible_raw	expected_context	expected_visible
-step_first_mangao	full_pinyin	mangao		man,mang	[man]'gao,[mang]'ao	0	0	man	man'gao	mangao	man'	true
-step_first_mingao	full_pinyin	mingao		min,ming	[min]'gao,[ming]'ao	0	0	min	min'gao	mingao	min'	true
-step_confirmed_man_remaining	full_pinyin	mangao	man	gao	man'[gao]	0	0	gao	man'gao	mangao	man'gao	true
-initial_qwerty_nihao	full_pinyin	nihao		ni	[ni]'hao	0	0	ni	ni'hao	nihao	ni'	true
-single_qwerty_nihao	full_pinyin	nihao	ni	hao	ni'[hao]	0	0	hao	ni'hao	nihao	ni'hao	true
-multi_step_fuzzy_makgguo	full_pinyin	makgguo		ma,mang*,mai*,man*	[ma]'kgguo,[mang*]'guo,[mai*]'gguo,[man*]'gguo	0	1	mang*	mang'guo	makgguo	mang'	true
-multi_step_fuzzy_makgguo_after_mang	full_pinyin	makgguo	mang	guo	mang'[guo]	0	0	guo	mang'guo	makgguo	mang'guo	true
+step_first_mangao	full_pinyin	mangao		man,mang	man,mang	0	0	man	man'gao	mangao	man'	true
+step_first_mingao	full_pinyin	mingao		min,ming	min,ming	0	0	min	min'gao	mingao	min'	true
+step_confirmed_man_remaining	full_pinyin	mangao	man	gao	gao	0	0	gao	man'gao	mangao	man'gao	true
+initial_qwerty_nihao	full_pinyin	nihao		ni	ni	0	0	ni	ni'hao	nihao	ni'	true
+single_qwerty_nihao	full_pinyin	nihao	ni	hao	hao	0	0	hao	ni'hao	nihao	ni'hao	true
+multi_step_fuzzy_makgguo	full_pinyin	makgguo		ma,mang*,mai*,man*	ma,mang*,mai*,man*	0	1	mang*	mang'guo	makgguo	mang'	true
+multi_step_fuzzy_makgguo_after_mang	full_pinyin	makgguo	mang	guo	guo	0	0	guo	mang'guo	makgguo	mang'guo	true
 invalid_qwerty_digit	full_pinyin	man2gao				-1	-1			false
 unsupported_t9_mangao	t9	mangao				-1	-1			false

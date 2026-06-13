@@ -131,12 +131,22 @@ grep -Eq 'setTypeface|Typeface|background|setBackground' "$prefix_adapter_file" 
   exit 1
 }
 
-for symbol in isPinyinSegmentationSelectorAvailable pinyinSegmentationChoices pinyinSegmentationDisplayChoices activePinyinSegmentationIndex onClickPinyinSegmentation; do
+for symbol in isPinyinSegmentationSelectorAvailable pinyinSegmentationChoices activePinyinSegmentationIndex onClickPinyinSegmentation; do
   grep -q "$symbol" "$container_file" || {
     echo "CandidatesContainer must integrate segmentation selector symbol $symbol" >&2
     exit 1
   }
 done
+
+if grep -q 'pinyinSegmentationDisplayChoices' "$container_file"; then
+  echo "CandidatesContainer must render current syllable labels, not whole-query display strings" >&2
+  exit 1
+fi
+
+grep -q 'onItemClick' "$prefix_adapter_file" || {
+  echo "PrefixAdapter must support direct item clicks for segmentation choices" >&2
+  exit 1
+}
 
 grep -q 'InputModeSwitcher.isChineseT9' "$container_file" || {
   echo "CandidatesContainer must preserve existing T9 prefix behavior separately" >&2
@@ -334,28 +344,7 @@ display_choices_for() {
   local raw="$1"
   local confirmed="$2"
   local choices="$3"
-  local normalized="${raw//\'/}"
-  normalized="$(printf '%s' "$normalized" | tr '[:upper:]' '[:lower:]')"
-  local consumed=0
-  local prefix=""
-  if [[ -n "$confirmed" ]]; then
-    IFS=',' read -ra confirmed_parts <<< "$confirmed"
-    for part in "${confirmed_parts[@]}"; do
-      consumed=$((consumed + ${#part}))
-    done
-    prefix="${confirmed//,/\'}'"
-  fi
-  local display=()
-  IFS=',' read -ra choice_array <<< "$choices"
-  for choice in "${choice_array[@]}"; do
-    [[ -n "$choice" ]] || continue
-    local source_length
-    source_length="$(choice_details "$raw" "$confirmed" | awk -F '\t' -v choice="$choice" '$1 == choice { print $2; exit }')"
-    [[ -n "$source_length" ]] || source_length="${#choice}"
-    local remaining_after="${normalized:consumed + source_length}"
-    display+=("${prefix}[$choice]$(if [[ -n "$remaining_after" ]]; then printf "'%s" "$remaining_after"; fi)")
-  done
-  (IFS=','; printf '%s' "${display[*]}")
+  printf '%s' "$choices"
 }
 
 segment_case() {

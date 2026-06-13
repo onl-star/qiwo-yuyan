@@ -139,7 +139,7 @@ object RimeEngine {
 
     fun pinyinSegmentationDisplayChoices(): Array<String> {
         refreshPinyinSegmentation()
-        return pinyinSegmentationStepChoices.map { pinyinSegmentationDisplayLabel(it) }.toTypedArray()
+        return pinyinSegmentationChoices.toTypedArray()
     }
 
     fun activePinyinSegmentationIndex(): Int {
@@ -251,27 +251,6 @@ object RimeEngine {
         return listOf(confirmedQuery, remaining)
             .filter { it.isNotEmpty() }
             .joinToString("'")
-    }
-
-    private fun pinyinSegmentationDisplayLabel(choice: PinyinSegmentation.SyllableChoice): String {
-        val visibleRaw = normalizedVisibleRawComposition().orEmpty()
-        val consumedLength = confirmedPinyinSyllables.sumOf { it.sourceLength }
-        val confirmedPrefix = confirmedPinyinSyllables
-            .joinToString("'") { it.syllable }
-            .takeIf { it.isNotEmpty() }
-            ?.let { "$it'" }
-            .orEmpty()
-        val remaining = visibleRaw.drop(consumedLength + choice.sourceLength)
-        return buildString {
-            append(confirmedPrefix)
-            append('[')
-            append(choice.label)
-            append(']')
-            if (remaining.isNotEmpty()) {
-                append('\'')
-                append(remaining)
-            }
-        }
     }
 
     private fun restoreVisibleRawPinyinCompositionIfNeeded() {
