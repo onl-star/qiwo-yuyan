@@ -211,11 +211,6 @@ object RimeEngine {
             rawPinyinComposition = rawComposition
             return
         }
-        if (confirmedPinyinSyllables.isEmpty() && choices.size <= 1) {
-            clearPinyinSegmentation()
-            rawPinyinComposition = rawComposition
-            return
-        }
         rawPinyinComposition = rawComposition
         pinyinSegmentationStepChoices = choices
         pinyinSegmentationChoices = choices.map { it.label }

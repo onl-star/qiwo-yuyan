@@ -6,11 +6,25 @@ object PinyinSegmentation {
     data class SyllableChoice(
         val syllable: String,
         val sourceLength: Int,
-        val isCorrection: Boolean = false
+        val isCorrection: Boolean = false,
+        val editCost: Int = if (isCorrection) 1 else 0,
+        val totalEditCost: Int = editCost
     ) {
         val label: String
             get() = if (isCorrection) "$syllable*" else syllable
     }
+
+    private data class SearchPath(
+        val offset: Int,
+        val firstChoice: SyllableChoice?,
+        val totalEditCost: Int,
+        val steps: Int
+    )
+
+    private const val maxTotalEditCost = 2
+    private const val maxEditCostPerSyllable = 2
+    private const val maxCurrentStepEditCost = 1
+    private const val maxBeamWidth = 32
 
     private val syllables = setOf(
         "a", "ai", "an", "ang", "ao",
@@ -40,57 +54,49 @@ object PinyinSegmentation {
 
     fun segmentations(raw: String): List<String> {
         val normalized = normalizeInput(raw) ?: return emptyList()
-        val distinctChoices = splitAll(normalized)
+        return splitAll(normalized)
             .map { it.joinToString("'") }
             .distinct()
             .sorted()
-        return if (distinctChoices.size <= 1) emptyList() else distinctChoices
     }
 
     fun currentStepChoices(raw: String, consumedLength: Int = 0, maxChoices: Int = 8): List<SyllableChoice> {
         val normalized = normalizeInput(raw) ?: return emptyList()
         val start = consumedLength.coerceIn(0, normalized.length)
-        val remaining = normalized.substring(start)
-        if (remaining.isEmpty()) return emptyList()
+        val paths = completePaths(normalized, start)
+        if (paths.isEmpty()) return emptyList()
+        val bestTotalCost = paths.minOf { it.totalEditCost }
 
-        val exact = syllables
-            .filter { syllable -> remaining.startsWith(syllable) && hasSegmentableTail(remaining.substring(syllable.length)) }
-            .map { syllable -> SyllableChoice(syllable, syllable.length, isCorrection = false) }
-            .sortedWith(compareBy<SyllableChoice> { it.sourceLength }.thenBy { it.syllable })
-
-        val exactSyllables = exact.map { it.syllable }.toSet()
-        val correction = if (exact.size == 1) {
-            emptyList()
-        } else {
-            syllables
-                .asSequence()
-                .flatMap { syllable ->
-                    ((syllable.length - 1)..(syllable.length + 1)).asSequence().map { sourceLength ->
-                        syllable to sourceLength
-                    }
-                }
-                .filter { (_, sourceLength) -> sourceLength > 0 && sourceLength <= remaining.length }
-                .filter { (syllable, _) -> syllable !in exactSyllables }
-                .filter { (syllable, sourceLength) -> hasSegmentableTail(remaining.substring(sourceLength)) && editDistanceAtMostOne(remaining.substring(0, sourceLength), syllable) }
-                .map { (syllable, sourceLength) -> SyllableChoice(syllable, sourceLength, isCorrection = true) }
-                .distinctBy { it.syllable to it.sourceLength }
-                .sortedBy { it.syllable }
-                .toList()
-        }
-
-        return (exact + correction)
-            .distinctBy { it.label }
+        return paths
+            .mapNotNull { path ->
+                path.firstChoice?.copy(totalEditCost = path.totalEditCost)
+            }
+            .filter { choice ->
+                // If exact full paths exist, keep the parsing area focused on the exact
+                // syllable steps. Fuzzy choices become useful when the full raw input
+                // cannot be resolved exactly, such as "makgguo".
+                bestTotalCost != 0 || choice.totalEditCost == 0
+            }
+            .groupBy { it.label }
+            .map { (_, choices) ->
+                choices.sortedWith(choiceComparator).first()
+            }
+            .sortedWith(choiceComparator)
             .take(maxChoices)
     }
 
     fun hasSegmentableTail(raw: String): Boolean {
         val normalized = normalizeInput(raw) ?: return raw.isEmpty()
-        return splitAll(normalized).isNotEmpty()
+        return completePaths(normalized, 0, maxPaths = 1).isNotEmpty()
     }
 
     fun editDistanceAtMostOne(left: String, right: String): Boolean {
-        if (left == right) return true
-        if (kotlin.math.abs(left.length - right.length) > 1) return false
+        return editDistance(left, right, maxEdits = 1) != null
+    }
+
+    private fun editDistance(left: String, right: String, maxEdits: Int): Int? {
+        if (left == right) return 0
+        if (kotlin.math.abs(left.length - right.length) > maxEdits) return null
         var leftIndex = 0
         var rightIndex = 0
         var edits = 0
@@ -101,7 +107,7 @@ object PinyinSegmentation {
                 continue
             }
             edits += 1
-            if (edits > 1) return false
+            if (edits > maxEdits) return null
             when {
                 left.length > right.length -> leftIndex += 1
                 right.length > left.length -> rightIndex += 1
@@ -111,7 +117,7 @@ object PinyinSegmentation {
                 }
             }
         }
-        return true
+        return edits
     }
 
     fun normalizeInput(raw: String): String? {
@@ -138,5 +144,101 @@ object PinyinSegmentation {
         }
 
         return splitFrom(0)
+    }
+
+    private val orderedSyllables: List<String> = syllables.sortedWith(compareBy<String> { it.length }.thenBy { it })
+
+    private val choiceComparator = compareBy<SyllableChoice> { if (it.isCorrection) 1 else 0 }
+        .thenBy { it.totalEditCost }
+        .thenBy { it.editCost }
+        .thenBy { it.sourceLength }
+        .thenBy { it.syllable }
+
+    private val pathComparator = compareBy<SearchPath> { it.totalEditCost }
+        .thenBy { it.steps }
+        .thenByDescending { it.offset }
+        .thenBy { it.firstChoice?.let { choice -> if (choice.isCorrection) 1 else 0 } ?: 0 }
+        .thenBy { it.firstChoice?.syllable.orEmpty() }
+
+    private fun completePaths(
+        normalized: String,
+        start: Int,
+        maxPaths: Int = maxBeamWidth
+    ): List<SearchPath> {
+        if (start >= normalized.length) return emptyList()
+        val completed = mutableListOf<SearchPath>()
+        var frontier = listOf(SearchPath(offset = start, firstChoice = null, totalEditCost = 0, steps = 0))
+        val maxSteps = normalized.length - start
+
+        while (frontier.isNotEmpty() && completed.size < maxPaths) {
+            val next = mutableListOf<SearchPath>()
+            for (path in frontier) {
+                if (path.offset == normalized.length) {
+                    completed.add(path)
+                    continue
+                }
+                if (path.steps >= maxSteps) continue
+
+                val maxEdgeEditCost = if (path.firstChoice == null) maxCurrentStepEditCost else maxEditCostPerSyllable
+                for (choice in choicesAt(normalized, path.offset, maxEdgeEditCost, isCurrentStep = path.firstChoice == null)) {
+                    val nextTotalCost = path.totalEditCost + choice.editCost
+                    if (nextTotalCost > maxTotalEditCost) continue
+                    val firstChoice = path.firstChoice ?: choice
+                    next.add(
+                        SearchPath(
+                            offset = path.offset + choice.sourceLength,
+                            firstChoice = firstChoice,
+                            totalEditCost = nextTotalCost,
+                            steps = path.steps + 1
+                        )
+                    )
+                }
+            }
+            frontier = next
+                .sortedWith(pathComparator)
+                .take(maxBeamWidth)
+        }
+
+        return completed
+            .sortedWith(pathComparator)
+            .take(maxPaths)
+    }
+
+    private fun choicesAt(
+        normalized: String,
+        offset: Int,
+        maxEdgeEditCost: Int,
+        isCurrentStep: Boolean
+    ): List<SyllableChoice> {
+        val remaining = normalized.substring(offset)
+        val choices = mutableListOf<SyllableChoice>()
+        for (syllable in orderedSyllables) {
+            val minSourceLength = (syllable.length - maxEdgeEditCost).coerceAtLeast(1)
+            val maxSourceLength = (syllable.length + maxEdgeEditCost).coerceAtMost(remaining.length)
+            for (sourceLength in minSourceLength..maxSourceLength) {
+                val source = remaining.substring(0, sourceLength)
+                val editCost = editDistance(source, syllable, maxEdgeEditCost) ?: continue
+                if (isCurrentStep && editCost > 0 && source.firstOrNull() != syllable.firstOrNull()) {
+                    continue
+                }
+                if (isCurrentStep && editCost > 0 && sourceLength != syllable.length) {
+                    continue
+                }
+                if (editCost > 0 && sourceLength > syllable.length && source.startsWith(syllable)) {
+                    continue
+                }
+                choices.add(
+                    SyllableChoice(
+                        syllable = syllable,
+                        sourceLength = sourceLength,
+                        isCorrection = editCost > 0,
+                        editCost = editCost
+                    )
+                )
+            }
+        }
+        return choices
+            .distinctBy { "${it.label}:${it.sourceLength}:${it.editCost}" }
+            .sortedWith(choiceComparator)
     }
 }
