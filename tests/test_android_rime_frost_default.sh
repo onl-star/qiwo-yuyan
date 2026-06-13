@@ -27,7 +27,7 @@ grep -q 'pinyinModeRime = string("input_method_pinyin_mode_rime", CustomConstant
 }
 
 grep -q 'SCHEMA_FROST = "rime_frost_android"' "$constant_file" || {
-  echo "White frost menu entry must use the Android-compatible schema while legacy native lacks librime-lua" >&2
+  echo "White frost schema id must remain documented for future native backend work" >&2
   exit 1
 }
 
@@ -36,35 +36,49 @@ grep -q 'SCHEMA_FROST_FULL = "rime_frost"' "$constant_file" || {
   exit 1
 }
 
-grep -q 'CURRENT_RIME_DICT_DATA_VERSIOM = 2026061302' "$constant_file" || {
-  echo "Rime data version must be bumped so existing frost-default installs receive the fallback migration" >&2
+grep -q 'CURRENT_RIME_DICT_DATA_VERSIOM = 2026061303' "$constant_file" || {
+  echo "Rime data version must be bumped so existing frost installs receive the fallback migration" >&2
   exit 1
 }
 
-grep -q 'migrateUnstableFrostDefaultToLegacyPinyin()' "$launcher_file" || {
-  echo "Launcher must migrate unstable frost defaults back to pinyin" >&2
+grep -q 'fun stableSchemaForLegacyRime(schema: String): String' "$constant_file" || {
+  echo "Unsupported frost schema mapping must be centralized" >&2
   exit 1
 }
 
-grep -q 'Migrated unstable Rime schema from rime_frost to pinyin' "$launcher_file" || {
+grep -q 'schema == SCHEMA_FROST || schema == SCHEMA_FROST_FULL -> SCHEMA_ZH_QWERTY' "$constant_file" || {
+  echo "Full-pinyin frost schemas must map to stable pinyin under the legacy backend" >&2
+  exit 1
+}
+
+grep -q 'schema == SCHEMA_FROST_T9 -> SCHEMA_ZH_T9' "$constant_file" || {
+  echo "Frost T9 schema must map to stable T9 under the legacy backend" >&2
+  exit 1
+}
+
+grep -q 'schema.startsWith(SCHEMA_FROST_DOUBLE_PREFIX)' "$constant_file" || {
+  echo "Frost double-pinyin schemas must map to stable double-pinyin under the legacy backend" >&2
+  exit 1
+}
+
+grep -q 'migrateUnsupportedFrostSchemasToLegacy()' "$launcher_file" || {
+  echo "Launcher must migrate unsupported frost schemas away from legacy Rime" >&2
+  exit 1
+}
+
+grep -q 'Migrated unsupported Rime schema from' "$launcher_file" || {
   echo "Frost fallback migration must be visible in logcat" >&2
-  exit 1
-}
-
-grep -q 'pinyinModeRime.getValue() == CustomConstant.SCHEMA_FROST_FULL' "$launcher_file" || {
-  echo "Launcher must only migrate the unsupported full rime_frost schema, not the Android-compatible frost schema" >&2
   exit 1
 }
 
 awk '
   /schema_list:/ { in_list = 1; next }
-  in_list && /- schema: rime_frost$/ { frost_line = NR }
-  in_list && /- schema: rime_frost_android$/ { frost_android_line = NR }
+  in_list && /- schema: rime_frost/ { frost_line = NR }
   in_list && /- schema: pinyin$/ { pinyin_line = NR }
   in_list && /"menu\/page_size"/ { in_list = 0 }
-  END { exit frost_line > 0 && frost_android_line > 0 && pinyin_line > 0 && pinyin_line < frost_android_line && frost_android_line < frost_line ? 0 : 1 }
+  END { exit pinyin_line > 0 && frost_line == 0 ? 0 : 1 }
 ' "$launcher_file" || {
-  echo "default.custom.yaml must list stable pinyin, Android-compatible frost, then full rime_frost" >&2
+  echo "default.custom.yaml must not expose frost schemas while the legacy backend is active" >&2
   exit 1
 }
 
@@ -73,28 +87,28 @@ grep -q 'else -> CustomConstant.SCHEMA_ZH_QWERTY' "$switcher_file" || {
   exit 1
 }
 
-grep -q 'SkbMenuMode.Pinyin26Frost' "$settings_container_file" || {
-  echo "Keyboard switch panel must expose a separate rime_frost full-pinyin entry" >&2
+grep -q 'CustomConstant.stableSchemaForLegacyRime(value.second)' "$switcher_file" || {
+  echo "Settings mode switch must sanitize unsupported frost schemas before persisting" >&2
   exit 1
 }
 
-grep -q 'CustomConstant.SCHEMA_FROST' "$settings_container_file" || {
-  echo "Rime frost full-pinyin entry must switch to the Android-compatible SCHEMA_FROST" >&2
+if grep -q 'savedSchema.startsWith(CustomConstant.SCHEMA_FROST_DOUBLE_PREFIX)\|savedSchema == CustomConstant.SCHEMA_FROST' "$switcher_file"; then
+  echo "Input mode switcher must not route frost schemas into legacy Rime" >&2
   exit 1
-}
+fi
 
-grep -q 'SkbMenuMode.Pinyin26Frost -> rimeValue == CustomConstant.SCHEMA_FROST' "$menu_adapter_file" || {
-  echo "Settings menu adapter must show rime_frost selected state" >&2
+if grep -q 'keyboard_name_cn26_frost' "$settings_container_file"; then
+  echo "Keyboard switch panel must hide frost entries until the native core supports them" >&2
   exit 1
-}
+fi
 
-grep -q 'SkbMenuMode.Pinyin26Frost -> rimeValue == CustomConstant.SCHEMA_FROST' "$candidates_menu_adapter_file" || {
-  echo "Candidate menu adapter must show rime_frost selected state" >&2
+if grep -q 'SkbMenuMode.Pinyin26Frost -> rimeValue == CustomConstant.SCHEMA_FROST' "$menu_adapter_file" "$candidates_menu_adapter_file"; then
+  echo "Menu adapters must not mark frost as selectable while legacy Rime is active" >&2
   exit 1
-}
+fi
 
-grep -q 'selectSchema failed for' "$kernel_file" || {
-  echo "Kernel must log schema selection failure before falling back" >&2
+grep -q 'CustomConstant.stableSchemaForLegacyRime(schema)' "$kernel_file" || {
+  echo "Kernel must sanitize unsupported frost schemas before native selection" >&2
   exit 1
 }
 
@@ -103,10 +117,10 @@ grep -q 'setValue(CustomConstant.SCHEMA_ZH_QWERTY)' "$kernel_file" || {
   exit 1
 }
 
-grep -q 'cp -n "$RIME_DIR"/build/\* "$RIME_BUILD_SRC/"' "$workflow_file" || {
-  echo "Android CI must copy complete rime_frost build artifacts, including schema yaml files" >&2
+if grep -q 'Precompile rime-frost schemas\|rime_deployer\|rime_frost_android' "$workflow_file"; then
+  echo "Android CI must not package desktop-precompiled frost tables for the legacy backend" >&2
   exit 1
-}
+fi
 
 grep -q 'schema_id: rime_frost_android' "$frost_android_schema_file" || {
   echo "Android-compatible frost schema must declare schema_id rime_frost_android" >&2
@@ -128,17 +142,12 @@ if grep -q 'cn_dicts_cell' "$frost_android_dict_file"; then
   exit 1
 fi
 
-grep -q 'schema: rime_frost_android' "$workflow_file" || {
-  echo "Android CI must precompile the Android-compatible frost schema" >&2
-  exit 1
-}
-
-if grep -q 'for schema in rime_frost ' "$workflow_file"; then
-  echo "Android CI must not treat full rime_frost as the runtime-compatible precompiled schema" >&2
+if grep -q 'migrateDefaultSchemaToFrost\|New installs must default pinyinModeRime to rime_frost\|else -> CustomConstant.SCHEMA_FROST' "$launcher_file" "$switcher_file" "$prefs_file"; then
+  echo "Android code/tests must not force rime_frost as the default until it is runtime-verified" >&2
   exit 1
 fi
 
-if grep -q 'migrateDefaultSchemaToFrost\|New installs must default pinyinModeRime to rime_frost\|else -> CustomConstant.SCHEMA_FROST' "$launcher_file" "$switcher_file" "$prefs_file"; then
-  echo "Android code/tests must not force rime_frost as the default until it is runtime-verified" >&2
+if grep -q 'schema == CustomConstant.SCHEMA_ZH_QWERTY || schema == CustomConstant.SCHEMA_FROST' "$root/yuyansdk/src/main/java/com/yuyan/inputmethod/RimeEngine.kt"; then
+  echo "Composition editing must not treat frost schemas as active legacy full-pinyin schemas" >&2
   exit 1
 fi

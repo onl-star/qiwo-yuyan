@@ -13,9 +13,14 @@ object Kernel {
     // 初始化输入法
     @Synchronized
     fun initImeSchema(schema: String) {
-        val selected = RimeEngine.selectSchema(schema)
-        if (!selected && schema != CustomConstant.SCHEMA_ZH_QWERTY) {
-            Log.w(TAG, "selectSchema failed for $schema, fallback to ${CustomConstant.SCHEMA_ZH_QWERTY}")
+        val safeSchema = CustomConstant.stableSchemaForLegacyRime(schema)
+        if (safeSchema != schema) {
+            Log.w(TAG, "schema $schema is unsupported by legacy Rime, fallback to $safeSchema")
+            AppPrefs.getInstance().internal.pinyinModeRime.setValue(safeSchema)
+        }
+        val selected = RimeEngine.selectSchema(safeSchema)
+        if (!selected && safeSchema != CustomConstant.SCHEMA_ZH_QWERTY) {
+            Log.w(TAG, "selectSchema failed for $safeSchema, fallback to ${CustomConstant.SCHEMA_ZH_QWERTY}")
             AppPrefs.getInstance().internal.pinyinModeRime.setValue(CustomConstant.SCHEMA_ZH_QWERTY)
             RimeEngine.selectSchema(CustomConstant.SCHEMA_ZH_QWERTY)
         }

@@ -92,12 +92,15 @@ for symbol in isFullKeyboardPinyinCompositionEditable setCompositionCaret clearC
   }
 done
 
-for symbol in SCHEMA_ZH_QWERTY SCHEMA_FROST; do
-  grep -q "$symbol" "$rime_engine_file" || {
-    echo "RimeEngine full-keyboard gate must include $symbol" >&2
-    exit 1
-  }
-done
+grep -q 'schema == CustomConstant.SCHEMA_ZH_QWERTY' "$rime_engine_file" || {
+  echo "RimeEngine full-keyboard gate must include stable pinyin" >&2
+  exit 1
+}
+
+if grep -q 'schema == CustomConstant.SCHEMA_ZH_QWERTY || schema == CustomConstant.SCHEMA_FROST' "$rime_engine_file"; then
+  echo "RimeEngine full-keyboard gate must not include frost schemas while the legacy backend is active" >&2
+  exit 1
+fi
 
 awk '
   /fun insertCompositionAtCaret\(/ { in_func = 1 }

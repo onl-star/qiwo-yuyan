@@ -263,8 +263,9 @@ object InputModeSwitcher {
      */
     fun switchModeForSetting(value: Pair<Int, String>) {
         val inputMode = value.first or MASK_LANGUAGE_CN
+        val schema = CustomConstant.stableSchemaForLegacyRime(value.second)
         getInstance().internal.inputMethodPinyinMode.setValue(inputMode)
-        getInstance().internal.pinyinModeRime.setValue(value.second)
+        getInstance().internal.pinyinModeRime.setValue(schema)
         KeyboardLoaderUtil.instance.clearKeyboardMap()
         KeyboardManager.instance.clearKeyboard()
         saveInputMode(inputMode)
@@ -353,19 +354,15 @@ object InputModeSwitcher {
      */
     private fun getSchemaForMode(inputMode: Int): String {
         val layout = inputMode and MASK_SKB_LAYOUT
-        val savedSchema = getInstance().internal.pinyinModeRime.getValue()
+        val savedSchema = CustomConstant.stableSchemaForLegacyRime(getInstance().internal.pinyinModeRime.getValue())
         return when (layout) {
             MASK_SKB_LAYOUT_T9_PINYIN -> {
-                // 如果用户手动选了 frost_t9，使用它；否则用原 t9_pinyin
-                if (savedSchema == CustomConstant.SCHEMA_FROST_T9) savedSchema
-                else CustomConstant.SCHEMA_ZH_T9
+                CustomConstant.SCHEMA_ZH_T9
             }
             MASK_SKB_LAYOUT_QWERTY_PINYIN -> {
                 when {
                     savedSchema == CustomConstant.SCHEMA_ZH_QWERTY -> savedSchema
                     savedSchema.startsWith(CustomConstant.SCHEMA_ZH_DOUBLE_FLYPY) -> savedSchema
-                    savedSchema.startsWith(CustomConstant.SCHEMA_FROST_DOUBLE_PREFIX) -> savedSchema
-                    savedSchema == CustomConstant.SCHEMA_FROST -> savedSchema
                     else -> CustomConstant.SCHEMA_ZH_QWERTY
                 }
             }
