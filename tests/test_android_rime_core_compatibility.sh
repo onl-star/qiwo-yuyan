@@ -70,6 +70,34 @@ for symbol in Rime.selectCandidate Rime.selectSchema Rime.setOption Rime.getAsso
   }
 done
 
+grep -q 'resolveRimeKeyCode(event)' "$rime_engine_file" || {
+  echo "RimeEngine must resolve soft-key Android KeyEvent values before passing them to full Rime" >&2
+  exit 1
+}
+
+grep -q 'rimeModifierMask(event)' "$rime_engine_file" || {
+  echo "RimeEngine must pass a real Rime modifier mask instead of KeyEvent action" >&2
+  exit 1
+}
+
+awk '
+  /fun onNormalKey\(event: KeyEvent\)/ { in_func = 1 }
+  in_func && /Rime\.processKey\(keyChar, rimeModifierMask\(event\)\)/ { correct = 1 }
+  in_func && /Rime\.processKey\(.*event\.action/ { exit 1 }
+  in_func && /^    private fun / { in_func = 0 }
+  END { exit correct ? 0 : 1 }
+' "$rime_engine_file" || {
+  echo "RimeEngine.onNormalKey must not pass KeyEvent.action as the Rime mask" >&2
+  exit 1
+}
+
+for symbol in 'KEYCODE_A..KeyEvent.KEYCODE_Z' 'KEYCODE_0..KeyEvent.KEYCODE_9' 'RIME_SHIFT_MASK' 'RIME_CONTROL_MASK' 'RIME_ALT_MASK'; do
+  grep -q "$symbol" "$rime_engine_file" || {
+    echo "RimeEngine must keep full-Rime soft-key mapping coverage: $symbol" >&2
+    exit 1
+  }
+done
+
 grep -q 'CustomConstant.RIME_DICT_PATH' "$rime_file" || {
   echo "Rime startup must preserve shared/user Rime dictionary directory handling" >&2
   exit 1

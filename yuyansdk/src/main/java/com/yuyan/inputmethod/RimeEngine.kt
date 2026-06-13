@@ -45,6 +45,9 @@ object RimeEngine {
     private var activePinyinSegmentationIndex: Int = -1
     private var customPhraseSize: Int = 0 // 自定义引擎候选词长度
     const val MASK_CASE_LOWER = 0
+    private const val RIME_SHIFT_MASK = 1
+    private const val RIME_CONTROL_MASK = 4
+    private const val RIME_ALT_MASK = 8
     private var charCase = 0x0000
     fun init() {
         Rime.getInstance(false)
@@ -72,11 +75,40 @@ object RimeEngine {
 
     fun onNormalKey(event: KeyEvent) {
         restoreVisibleRawPinyinCompositionIfNeeded()
-        val keyCode = event.keyCode
-        val keyChar = if(keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON) if(isFinish()) '/'.code else '\''.code
-            else event.unicodeChar
-        if (keyRecordStack.pushKey(event))Rime.processKey(keyChar, event.action)
+        val keyChar = resolveRimeKeyCode(event)
+        if (keyRecordStack.pushKey(event)) Rime.processKey(keyChar, rimeModifierMask(event))
         updateCandidatesOrCommitText()
+    }
+
+    private fun resolveRimeKeyCode(event: KeyEvent): Int {
+        val keyCode = event.keyCode
+        if (keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON) {
+            return if (isFinish()) '/'.code else '\''.code
+        }
+        if (event.unicodeChar > 0) return event.unicodeChar
+        return when (keyCode) {
+            in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z -> 'a'.code + keyCode - KeyEvent.KEYCODE_A
+            in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> '0'.code + keyCode - KeyEvent.KEYCODE_0
+            KeyEvent.KEYCODE_SPACE -> ' '.code
+            KeyEvent.KEYCODE_COMMA -> ','.code
+            KeyEvent.KEYCODE_PERIOD -> '.'.code
+            KeyEvent.KEYCODE_MINUS -> '-'.code
+            KeyEvent.KEYCODE_EQUALS -> '='.code
+            KeyEvent.KEYCODE_SLASH -> '/'.code
+            KeyEvent.KEYCODE_BACKSLASH -> '\\'.code
+            KeyEvent.KEYCODE_LEFT_BRACKET -> '['.code
+            KeyEvent.KEYCODE_RIGHT_BRACKET -> ']'.code
+            KeyEvent.KEYCODE_GRAVE -> '`'.code
+            else -> keyCode
+        }
+    }
+
+    private fun rimeModifierMask(event: KeyEvent): Int {
+        var mask = 0
+        if (event.isShiftPressed) mask = mask or RIME_SHIFT_MASK
+        if (event.isCtrlPressed) mask = mask or RIME_CONTROL_MASK
+        if (event.isAltPressed) mask = mask or RIME_ALT_MASK
+        return mask
     }
 
     fun onDeleteKey() {
