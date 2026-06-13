@@ -73,6 +73,7 @@ class Launcher {
 patch:
   schema_list:
     - schema: pinyin
+    - schema: rime_frost_android
     - schema: rime_frost
     - schema: rime_frost_t9
     - schema: rime_frost_double_pinyin_flypy
@@ -98,7 +99,7 @@ patch:
 
     private fun migrateUnstableFrostDefaultToLegacyPinyin() {
         val internalPrefs = AppPrefs.getInstance().internal
-        if (internalPrefs.pinyinModeRime.getValue() == CustomConstant.SCHEMA_FROST) {
+        if (internalPrefs.pinyinModeRime.getValue() == CustomConstant.SCHEMA_FROST_FULL) {
             internalPrefs.pinyinModeRime.setValue(CustomConstant.SCHEMA_ZH_QWERTY)
             android.util.Log.i("QiwoLauncher", "Migrated unstable Rime schema from rime_frost to pinyin")
         }

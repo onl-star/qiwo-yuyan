@@ -139,10 +139,10 @@ jobs:
           cat > "$RIME_DIR/default.yaml" << 'YAML'
           config_version: "2026-06-03"
           schema_list:
-            - schema: rime_frost
-            - schema: rime_frost_t9
-            - schema: rime_frost_double_pinyin_flypy
-            - schema: melt_eng
+            - schema: rime_frost_android
+            # Full rime_frost requires librime-lua. Current Android runtime uses
+            # the legacy yuyan backend, so CI only prebuilds the lua-free
+            # compatibility schema.
           menu:
             page_size: 8
           YAML
@@ -166,7 +166,7 @@ jobs:
           rime_deployer --build "$RIME_DIR" 2>&1 || {
             echo "rime_deployer failed (may need newer librime). Trying alternative..."
             # 备选：逐个编译 schema
-            for schema in rime_frost rime_frost_t9 rime_frost_double_pinyin_flypy melt_eng; do
+            for schema in rime_frost_android; do
               if [ -f "${schema}.schema.yaml" ]; then
                 echo "Selecting schema: $schema"
                 # 尝试用 API 方式编译（如果 deployer 不支持）
