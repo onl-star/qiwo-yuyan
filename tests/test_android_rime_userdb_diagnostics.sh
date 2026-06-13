@@ -43,6 +43,21 @@ grep -Fq '.userdb.txt' "$diagnostics_file" || {
   exit 1
 }
 
+grep -Fq 'rime_frost.userdb' "$diagnostics_file" || {
+  echo "User dictionary diagnostics must explicitly track canonical rime_frost.userdb" >&2
+  exit 1
+}
+
+grep -Fq 'rime_frost.userdb.txt' "$diagnostics_file" || {
+  echo "User dictionary diagnostics must explicitly track exported canonical rime_frost.userdb.txt" >&2
+  exit 1
+}
+
+grep -q 'hasFrostUserDb' "$diagnostics_file" || {
+  echo "User dictionary diagnostics must expose whether canonical frost userdb exists" >&2
+  exit 1
+}
+
 grep -q 'warningForMissingLocalUserDb' "$diagnostics_file" || {
   echo "User dictionary diagnostics must expose a missing-userdb warning" >&2
   exit 1
