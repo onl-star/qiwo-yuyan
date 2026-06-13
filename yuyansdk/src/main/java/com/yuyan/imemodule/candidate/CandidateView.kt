@@ -159,8 +159,13 @@ class CandidateView(context: Context, private val service: ImeService) : Lifecyc
 
     private fun processInput(event: KeyEvent): Boolean {
         val keyCode = event.keyCode
-        val keyChar = event.unicodeChar
-        val label = keyChar.toChar().toString()
+        val label = resolveSoftInputLabel(event)
+        if (event.unicodeChar <= 0 && label.isNotEmpty()) {
+            android.util.Log.i(
+                "QiwoRimeEngine",
+                "CandidateView resolved soft key keyCode=$keyCode label=$label"
+            )
+        }
         return when {
             keyCode == KeyEvent.KEYCODE_DEL -> {
                 if (DecodingInfo.isCandidatesEmpty || DecodingInfo.isAssociate) {
@@ -182,7 +187,7 @@ class CandidateView(context: Context, private val service: ImeService) : Lifecyc
                 }
                 true
             }
-            Character.isLetter(keyChar) || keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON -> {
+            label.firstOrNull()?.isLetter() == true || keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON -> {
                 val compositionInsertLabel = if (keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON) "'" else label
                 if (!compositionInsertLabel.first().isLetterOrSeparator() || !DecodingInfo.insertCompositionAtCaret(compositionInsertLabel)) {
                     DecodingInfo.inputAction(event)
@@ -194,6 +199,27 @@ class CandidateView(context: Context, private val service: ImeService) : Lifecyc
                 if (!DecodingInfo.isCandidatesEmpty && !DecodingInfo.isAssociate) chooseAndUpdate()
                 false
             }
+        }
+    }
+
+    private fun resolveSoftInputLabel(event: KeyEvent): String {
+        val keyCode = event.keyCode
+        if (keyCode == KeyEvent.KEYCODE_APOSTROPHE || keyCode == KeyEvent.KEYCODE_SEMICOLON) return "'"
+        if (event.unicodeChar > 0) return event.unicodeChar.toChar().toString()
+        return when (keyCode) {
+            in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z -> ('a'.code + keyCode - KeyEvent.KEYCODE_A).toChar().toString()
+            in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> ('0'.code + keyCode - KeyEvent.KEYCODE_0).toChar().toString()
+            KeyEvent.KEYCODE_SPACE -> " "
+            KeyEvent.KEYCODE_COMMA -> ","
+            KeyEvent.KEYCODE_PERIOD -> "."
+            KeyEvent.KEYCODE_MINUS -> "-"
+            KeyEvent.KEYCODE_EQUALS -> "="
+            KeyEvent.KEYCODE_SLASH -> "/"
+            KeyEvent.KEYCODE_BACKSLASH -> "\\"
+            KeyEvent.KEYCODE_LEFT_BRACKET -> "["
+            KeyEvent.KEYCODE_RIGHT_BRACKET -> "]"
+            KeyEvent.KEYCODE_GRAVE -> "`"
+            else -> ""
         }
     }
 

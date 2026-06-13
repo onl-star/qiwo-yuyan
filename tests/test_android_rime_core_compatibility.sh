@@ -4,10 +4,12 @@ set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 rime_file="$root/yuyansdk/src/main/java/com/yuyan/inputmethod/core/Rime.kt"
 rime_engine_file="$root/yuyansdk/src/main/java/com/yuyan/inputmethod/RimeEngine.kt"
+input_view_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/keyboard/InputView.kt"
+candidate_view_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/candidate/CandidateView.kt"
 gradle_file="$root/yuyansdk/build.gradle"
 workflow_file="$root/.github/workflows/build.yml"
 
-for file in "$rime_file" "$rime_engine_file" "$gradle_file" "$workflow_file"; do
+for file in "$rime_file" "$rime_engine_file" "$input_view_file" "$candidate_view_file" "$gradle_file" "$workflow_file"; do
   [[ -f "$file" ]] || {
     echo "Missing Android Rime core compatibility file: $file" >&2
     exit 1
@@ -97,6 +99,30 @@ for symbol in 'KEYCODE_A..KeyEvent.KEYCODE_Z' 'KEYCODE_0..KeyEvent.KEYCODE_9' 'R
     exit 1
   }
 done
+
+for file in "$input_view_file" "$candidate_view_file"; do
+  grep -q 'resolveSoftInputLabel(event)' "$file" || {
+    echo "$(basename "$file") must resolve soft-key labels before deciding whether to route into Rime" >&2
+    exit 1
+  }
+  grep -q 'event.unicodeChar > 0' "$file" || {
+    echo "$(basename "$file") must only trust unicodeChar when Android provides one" >&2
+    exit 1
+  }
+  grep -q 'KEYCODE_A..KeyEvent.KEYCODE_Z' "$file" || {
+    echo "$(basename "$file") must map soft-key letter keycodes when unicodeChar is zero" >&2
+    exit 1
+  }
+  grep -q 'QiwoRimeEngine' "$file" || {
+    echo "$(basename "$file") must log soft-key fallback diagnostics" >&2
+    exit 1
+  }
+done
+
+if grep -q 'Character\.isLetterOrDigit(keyChar)\|Character\.isLetter(keyChar)' "$input_view_file" "$candidate_view_file"; then
+  echo "Input dispatch must not classify soft keys only by unicodeChar" >&2
+  exit 1
+fi
 
 grep -q 'CustomConstant.RIME_DICT_PATH' "$rime_file" || {
   echo "Rime startup must preserve shared/user Rime dictionary directory handling" >&2
