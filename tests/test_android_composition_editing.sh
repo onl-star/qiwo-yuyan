@@ -97,10 +97,10 @@ grep -q 'schema == CustomConstant.SCHEMA_ZH_QWERTY' "$rime_engine_file" || {
   exit 1
 }
 
-if grep -q 'schema == CustomConstant.SCHEMA_ZH_QWERTY || schema == CustomConstant.SCHEMA_FROST' "$rime_engine_file"; then
-  echo "RimeEngine full-keyboard gate must not include frost schemas while the legacy backend is active" >&2
+grep -q 'schema == CustomConstant.SCHEMA_ZH_QWERTY || schema == CustomConstant.SCHEMA_FROST' "$rime_engine_file" || {
+  echo "RimeEngine full-keyboard gate must include canonical frost when the full Rime core is active" >&2
   exit 1
-fi
+}
 
 awk '
   /fun insertCompositionAtCaret\(/ { in_func = 1 }
