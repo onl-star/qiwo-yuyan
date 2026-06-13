@@ -202,17 +202,14 @@ class CandidatesContainer(context: Context, inputView: InputView) : BaseContaine
             hideLeftPrefixView()
             return
         }
+        val displayChoices = DecodingInfo.pinyinSegmentationDisplayChoices.takeIf { it.size == choices.size } ?: choices
         if (mRVLeftPrefix.footerCount > 0) mRVLeftPrefix.removeFooterView(mLlAddSymbol)
         mRVLeftPrefix.visibility = VISIBLE
         mRVLeftPrefix.setAdapter(null)
         mRVLeftPrefix.setOnItemClickListener { _: View?, position: Int ->
             inputView.onClickPinyinSegmentation(position)
         }
-        mRVLeftPrefix.setAdapter(
-            PrefixAdapter(context, choices, DecodingInfo.activePinyinSegmentationIndex) { position ->
-                inputView.onClickPinyinSegmentation(position)
-            }
-        )
+        mRVLeftPrefix.setAdapter(PrefixAdapter(context, displayChoices, DecodingInfo.activePinyinSegmentationIndex))
     }
 
     private fun hideLeftPrefixView() {

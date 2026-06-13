@@ -15,12 +15,7 @@ import com.yuyan.imemodule.view.popup.AutoScaleTextView
 /**
  * 拼音选择
  */
-class PrefixAdapter(
-    context: Context?,
-    private val mDatas: Array<String>,
-    private val activeIndex: Int = -1,
-    private val onItemClick: ((Int) -> Unit)? = null
-) :
+class PrefixAdapter(context: Context?, private val mDatas: Array<String>, private val activeIndex: Int = -1) :
     RecyclerView.Adapter<PrefixAdapter.SymbolTypeHolder>() {
     private val inflater: LayoutInflater = LayoutInflater.from(context)
     private val textColor: Int = activeTheme.keyTextColor
@@ -42,16 +37,6 @@ class PrefixAdapter(
         } else {
             holder.tvSymbolType.setTypeface(Typeface.DEFAULT)
             holder.tvSymbolType.background = null
-        }
-        val click = onItemClick
-        if (click != null) {
-            holder.itemView.isClickable = true
-            holder.itemView.setOnClickListener { click(position) }
-            holder.tvSymbolType.isClickable = true
-            holder.tvSymbolType.setOnClickListener { click(position) }
-        } else {
-            holder.itemView.setOnClickListener(null)
-            holder.tvSymbolType.setOnClickListener(null)
         }
     }
 

@@ -139,7 +139,7 @@ object RimeEngine {
 
     fun pinyinSegmentationDisplayChoices(): Array<String> {
         refreshPinyinSegmentation()
-        return pinyinSegmentationChoices.toTypedArray()
+        return pinyinSegmentationStepChoices.map { pinyinSegmentationDisplayLabel(it) }.toTypedArray()
     }
 
     fun activePinyinSegmentationIndex(): Int {
@@ -211,6 +211,11 @@ object RimeEngine {
             rawPinyinComposition = rawComposition
             return
         }
+        if (confirmedPinyinSyllables.isEmpty() && choices.size <= 1) {
+            clearPinyinSegmentation()
+            rawPinyinComposition = rawComposition
+            return
+        }
         rawPinyinComposition = rawComposition
         pinyinSegmentationStepChoices = choices
         pinyinSegmentationChoices = choices.map { it.label }
@@ -251,6 +256,27 @@ object RimeEngine {
         return listOf(confirmedQuery, remaining)
             .filter { it.isNotEmpty() }
             .joinToString("'")
+    }
+
+    private fun pinyinSegmentationDisplayLabel(choice: PinyinSegmentation.SyllableChoice): String {
+        val visibleRaw = normalizedVisibleRawComposition().orEmpty()
+        val consumedLength = confirmedPinyinSyllables.sumOf { it.sourceLength }
+        val confirmedPrefix = confirmedPinyinSyllables
+            .joinToString("'") { it.syllable }
+            .takeIf { it.isNotEmpty() }
+            ?.let { "$it'" }
+            .orEmpty()
+        val remaining = visibleRaw.drop(consumedLength + choice.sourceLength)
+        return buildString {
+            append(confirmedPrefix)
+            append('[')
+            append(choice.label)
+            append(']')
+            if (remaining.isNotEmpty()) {
+                append('\'')
+                append(remaining)
+            }
+        }
     }
 
     private fun restoreVisibleRawPinyinCompositionIfNeeded() {
