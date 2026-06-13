@@ -6,14 +6,20 @@ import java.io.File
 object RimeUserDictDiagnostics {
     private const val TAG = "QiwoUserDict"
     private const val MAX_SAMPLE_SIZE = 8
+    private const val FROST_USER_DB = "rime_frost.userdb"
+    private const val FROST_USER_DB_EXPORT = "rime_frost.userdb.txt"
 
     data class Snapshot(
         val localUserDbPaths: List<String>,
         val exportedUserDbPaths: List<String>,
-        val deviceExportedUserDbPaths: List<String>
+        val deviceExportedUserDbPaths: List<String>,
+        val frostUserDbPaths: List<String>,
+        val frostExportedUserDbPaths: List<String>
     ) {
         val hasLocalUserDb: Boolean get() = localUserDbPaths.isNotEmpty()
         val hasDeviceExportedUserDb: Boolean get() = deviceExportedUserDbPaths.isNotEmpty()
+        val hasFrostUserDb: Boolean get() = frostUserDbPaths.isNotEmpty()
+        val hasFrostExportedUserDb: Boolean get() = frostExportedUserDbPaths.isNotEmpty()
     }
 
     fun snapshot(rimeUserDir: File, deviceId: String? = null): Snapshot {
@@ -21,9 +27,11 @@ object RimeUserDictDiagnostics {
         val localUserDb = mutableListOf<String>()
         val exportedUserDb = mutableListOf<String>()
         val deviceExportedUserDb = mutableListOf<String>()
+        val frostUserDb = mutableListOf<String>()
+        val frostExportedUserDb = mutableListOf<String>()
 
         if (!rimeUserDir.exists()) {
-            return Snapshot(emptyList(), emptyList(), emptyList())
+            return Snapshot(emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
         }
 
         rimeUserDir.walkTopDown()
@@ -42,16 +50,24 @@ object RimeUserDictDiagnostics {
                         if (safeDeviceId != null && lowerRelativePath.startsWith("sync/$safeDeviceId/")) {
                             deviceExportedUserDb += relativePath
                         }
+                        if (lowerName == FROST_USER_DB_EXPORT) {
+                            frostExportedUserDb += relativePath
+                        }
                     }
                 } else if (lowerName.endsWith(".userdb") || lowerName.endsWith(".userdb.txt")) {
                     localUserDb += relativePath
+                    if (lowerName == FROST_USER_DB) {
+                        frostUserDb += relativePath
+                    }
                 }
             }
 
         return Snapshot(
             localUserDb.sorted(),
             exportedUserDb.sorted(),
-            deviceExportedUserDb.sorted()
+            deviceExportedUserDb.sorted(),
+            frostUserDb.sorted(),
+            frostExportedUserDb.sorted()
         )
     }
 
@@ -63,14 +79,20 @@ object RimeUserDictDiagnostics {
                 "localUserDb=${snapshot.localUserDbPaths.size} " +
                 "exportedUserDb=${snapshot.exportedUserDbPaths.size} " +
                 "deviceExportedUserDb=${snapshot.deviceExportedUserDbPaths.size} " +
+                "hasFrostUserDb=${snapshot.hasFrostUserDb} " +
+                "frostExportedUserDb=${snapshot.frostExportedUserDbPaths.size} " +
                 "localSamples=${snapshot.localUserDbPaths.sample()} " +
-                "deviceExportSamples=${snapshot.deviceExportedUserDbPaths.sample()}"
+                "deviceExportSamples=${snapshot.deviceExportedUserDbPaths.sample()} " +
+                "frostSamples=${snapshot.frostUserDbPaths.sample()} " +
+                "frostExportSamples=${snapshot.frostExportedUserDbPaths.sample()}"
         )
         return snapshot
     }
 
     fun warningForMissingLocalUserDb(snapshot: Snapshot): String? {
-        return if (!snapshot.hasLocalUserDb && !snapshot.hasDeviceExportedUserDb) {
+        return if (!snapshot.hasFrostUserDb && !snapshot.hasFrostExportedUserDb) {
+            "Rime frost user dictionary not found; local user words were not exported."
+        } else if (!snapshot.hasLocalUserDb && !snapshot.hasDeviceExportedUserDb) {
             "Rime user dictionary not found; local user words were not exported."
         } else {
             null
