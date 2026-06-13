@@ -80,33 +80,38 @@ done
 
 awk '
   /fun insertCompositionAtCaret\(/ { in_func = 1 }
-  in_func && /Rime\.setCompositionCaret/ { moved = 1 }
-  in_func && /processCompositionTextKey/ { typed = 1 }
-  in_func && /Rime\.replaceKey|replaceCompositionWithEditableText|CompositionEditMapping|moveNativeCompositionCaret/ { exit 1 }
+  in_func && /replaceCompositionTextAtCaret\(caret, insertedText = key\)/ { replaced = 1 }
+  in_func && /syncCompositionCaretAfterTextReplace\(nextCaret\)/ { synced = 1 }
+  in_func && /Rime\.setCompositionCaret|processCompositionTextKey|Rime\.processKey|replaceCompositionWithEditableText|CompositionEditMapping|moveNativeCompositionCaret/ { exit 1 }
   in_func && /^    fun / && !/fun insertCompositionAtCaret\(/ { in_func = 0 }
-  END { exit moved && typed ? 0 : 1 }
+  END { exit replaced && synced ? 0 : 1 }
 ' "$rime_engine_file" || {
-  echo "RimeEngine.insertCompositionAtCaret must set the native Rime caret directly before sending the typed key" >&2
+  echo "RimeEngine.insertCompositionAtCaret must rebuild visible composition text from the local caret" >&2
   exit 1
 }
 
 awk '
   /fun deleteCompositionBeforeCaret\(/ { in_func = 1 }
   in_func && /if \(caret <= 0\) return true/ { guarded = 1 }
-  in_func && /Rime\.setCompositionCaret\(caret\)/ { moved = 1 }
-  in_func && /Rime\.processKey\(getRimeKeycodeByName\("BackSpace"\), 0\)/ { deleted = 1 }
-  in_func && /Rime\.replaceKey|replaceCompositionWithEditableText|CompositionEditMapping|moveNativeCompositionCaret/ { exit 1 }
+  in_func && /replaceCompositionTextAtCaret\(caret, deleteBeforeCaret = true\)/ { replaced = 1 }
+  in_func && /syncCompositionCaretAfterTextReplace\(nextCaret\)/ { synced = 1 }
+  in_func && /Rime\.setCompositionCaret|Rime\.processKey|replaceCompositionWithEditableText|CompositionEditMapping|moveNativeCompositionCaret/ { exit 1 }
   in_func && /^    private fun / { in_func = 0 }
-  END { exit guarded && moved && deleted ? 0 : 1 }
+  END { exit guarded && replaced && synced ? 0 : 1 }
 ' "$rime_engine_file" || {
-  echo "RimeEngine.deleteCompositionBeforeCaret must set the native Rime caret directly before using native Rime backspace" >&2
+  echo "RimeEngine.deleteCompositionBeforeCaret must delete by rebuilding visible composition text from the local caret" >&2
   exit 1
 }
 
-grep -q 'Rime.setCompositionCaret' "$rime_engine_file" || {
-  echo "RimeEngine must use direct native Rime caret movement" >&2
+grep -q 'replaceCompositionTextAtCaret' "$rime_engine_file" || {
+  echo "RimeEngine must route composition edits through local-caret text replacement" >&2
   exit 1
 }
+
+if grep -q 'Rime.setCompositionCaret' "$rime_engine_file"; then
+  echo "RimeEngine must not depend on native Rime caret movement for editable composition text" >&2
+  exit 1
+fi
 
 for symbol in setCompositionCaret clearCompositionCaret insertCompositionAtCaret deleteCompositionBeforeCaret compositionTextForDisplay compositionTextForCaretDisplay compositionTextForEditing compositionCaretBoundary isCompositionEditingAvailable; do
   grep -q "$symbol" "$kernel_file" || {
