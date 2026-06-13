@@ -127,10 +127,18 @@ def verifyQiwoAndroidRimeCoreJniLibs = tasks.register('verifyQiwoAndroidRimeCore
 
 def copyQiwoAndroidRimeCoreStlJniLibs = tasks.register('copyQiwoAndroidRimeCoreStlJniLibs', Copy) {
     qiwoAndroidRimeCoreAbis.each { abi ->
-        def stlSource = qiwoAndroidRimeCoreStlSource(abi)
-        if (stlSource != null) {
-            from(stlSource) {
+        def prebuiltStlSource = new File(qiwoAndroidRimeCorePrebuiltJniLibsDir, "${abi}/libc++_shared.so")
+        if (prebuiltStlSource.exists()) {
+            from(prebuiltStlSource.parentFile) {
+                include 'libc++_shared.so'
                 into abi
+            }
+        } else {
+            def stlSource = qiwoAndroidRimeCoreStlSource(abi)
+            if (stlSource != null) {
+                from(stlSource) {
+                    into abi
+                }
             }
         }
     }
@@ -152,7 +160,8 @@ def verifyQiwoAndroidRimeCoreStlJniLibs = tasks.register('verifyQiwoAndroidRimeC
         if (!missingAbis.isEmpty()) {
             throw new GradleException(
                     "Missing libc++_shared.so for Android ABI(s): ${missingAbis.join(', ')}. " +
-                            "Set ANDROID_NDK_HOME, ANDROID_NDK_ROOT, or NDK_HOME so the generated Rime core wrapper can package the Android C++ runtime.")
+                            "Build qiwo-android-rime-core with packaged Android C++ runtime outputs or set " +
+                            "ANDROID_NDK_HOME, ANDROID_NDK_ROOT, or NDK_HOME.")
         }
     }
 }

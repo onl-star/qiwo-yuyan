@@ -105,9 +105,10 @@ class Rime(fullCheck: Boolean) {
 
         @JvmStatic
         fun selectCandidate(index: Int): Boolean {
-            return selectRimeCandidate(index).also {
-                updateContext()
-            }
+            val selected = selectRimeCandidate(index)
+            Log.i(TAG, "selectRimeCandidate index=$index result=$selected")
+            updateContext()
+            return selected
         }
 
         @JvmStatic

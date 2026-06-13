@@ -50,7 +50,7 @@ class SyncWorker(
         val fullUrl = "$serverUrl/$folder"
         Log.i(TAG, "Starting background sync to $fullUrl")
 
-        syncRimeUserData("export")
+        syncRimeUserData("worker-export", rimeUserDir, device)
 
         val request = SyncRequest(
             deviceId = device,
@@ -72,7 +72,18 @@ class SyncWorker(
         Log.i(TAG, "Sync completed: uploaded=${summary.uploaded}, " +
             "downloaded=${summary.downloaded}, conflicts=${summary.conflictsBackedUp}")
 
-        syncRimeUserData("import")
+        val importOk = syncRimeUserData("worker-import", rimeUserDir, device)
+        val importSnapshot = RimeUserDictDiagnostics.logSnapshot(
+            "worker-after-import",
+            rimeUserDir,
+            device
+        )
+        if (!importOk) {
+            Log.w(TAG, "Rime user data import/export failed during background sync")
+        }
+        RimeUserDictDiagnostics.warningForMissingLocalUserDb(importSnapshot)?.let {
+            Log.w(TAG, it)
+        }
 
         // 如果有文件变更，触发 Rime 重新部署
         if (summary.totalFiles > 0) {
@@ -88,16 +99,23 @@ class SyncWorker(
         return Result.success()
     }
 
-    private fun syncRimeUserData(stage: String): Boolean {
+    private fun syncRimeUserData(stage: String, rimeUserDir: File, device: String): Boolean {
+        RimeUserDictDiagnostics.logSnapshot("$stage-before", rimeUserDir, device)
         return try {
             Rime.getInstance(false)
             val ok = QiwoSync.syncUserData()
+            Log.i(TAG, "Rime sync_user_data stage=$stage result=$ok")
+            val snapshot = RimeUserDictDiagnostics.logSnapshot("$stage-after", rimeUserDir, device)
             if (!ok) {
-                Log.w(TAG, "Rime sync_user_data $stage failed")
+                Log.w(TAG, "Rime sync_user_data stage=$stage failed")
+            }
+            RimeUserDictDiagnostics.warningForMissingLocalUserDb(snapshot)?.let {
+                Log.w(TAG, it)
             }
             ok
         } catch (e: Throwable) {
-            Log.e(TAG, "Rime sync_user_data $stage failed", e)
+            Log.e(TAG, "Rime sync_user_data stage=$stage failed", e)
+            RimeUserDictDiagnostics.logSnapshot("$stage-after-error", rimeUserDir, device)
             false
         }
     }

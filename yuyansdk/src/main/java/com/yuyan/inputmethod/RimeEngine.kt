@@ -1,10 +1,12 @@
 package com.yuyan.inputmethod
 
+import android.util.Log
 import android.view.KeyEvent
 import com.yuyan.imemodule.application.CustomConstant
 import com.yuyan.imemodule.application.Launcher
 import com.yuyan.imemodule.manager.InputModeSwitcher
 import com.yuyan.imemodule.prefs.AppPrefs
+import com.yuyan.imemodule.sync.RimeUserDictDiagnostics
 import com.yuyan.imemodule.utils.StringUtils
 import com.yuyan.inputmethod.core.CandidateListItem
 import com.yuyan.inputmethod.core.Rime
@@ -15,9 +17,11 @@ import com.yuyan.inputmethod.util.LX17PinYinUtils
 import com.yuyan.inputmethod.util.PinyinSegmentation
 import com.yuyan.inputmethod.util.QwertyPinYinUtils
 import com.yuyan.inputmethod.util.T9PinYinUtils
+import java.io.File
 import java.util.Locale
 
 object RimeEngine {
+    private const val TAG = "QiwoRimeEngine"
     private val keyRecordStack = KeyRecordStack()
     private var pinyins: Array<String> = emptyArray() // 候选词界面的候选拼音列表
     var showCandidates: List<CandidateListItem> = emptyList() // 所有待展示的候选词
@@ -83,9 +87,27 @@ object RimeEngine {
 
     fun selectCandidate(index: Int): String? {
         val indexReal = index - customPhraseSize
-        Rime.selectCandidate(indexReal)
+        val schema = getCurrentRimeSchema()
+        val candidateLength = showCandidates.getOrNull(indexReal)?.text?.length ?: -1
+        Log.i(
+            TAG,
+            "selectCandidate request index=$index real=$indexReal schema=$schema " +
+                "candidateLength=$candidateLength customPhraseSize=$customPhraseSize"
+        )
+        val selected = Rime.selectCandidate(indexReal)
+        Log.i(TAG, "selectCandidate nativeResult=$selected real=$indexReal schema=$schema")
         keyRecordStack.pushCandidateSelectAction()
-        return updateCandidatesOrCommitText()
+        val committed = updateCandidatesOrCommitText()
+        Log.i(
+            TAG,
+            "selectCandidate commitPresent=${committed != null} commitLength=${committed?.length ?: 0} " +
+                "candidatesAfter=${showCandidates.size} composing=${Rime.isComposing}"
+        )
+        RimeUserDictDiagnostics.logSnapshot(
+            "candidate-select",
+            File(CustomConstant.RIME_DICT_PATH)
+        )
+        return committed
     }
 
     fun getNextPageCandidates(): Array<CandidateListItem> {
@@ -496,6 +518,11 @@ object RimeEngine {
     private fun updateCandidatesOrCommitText(): String? {
         val rimeCommit = Rime.getRimeCommit()
         if (rimeCommit != null) {
+            Log.i(
+                TAG,
+                "getRimeCommit commitLength=${rimeCommit.commitText.length} " +
+                    "schema=${getCurrentRimeSchema()}"
+            )
             clearCompositionCaret()
             clearPinyinSegmentation()
             keyRecordStack.clear()

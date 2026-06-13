@@ -97,6 +97,11 @@ grep -q 'copyQiwoAndroidRimeCoreStlJniLibs' "$gradle_file" || {
   exit 1
 }
 
+grep -q 'prebuiltStlSource' "$gradle_file" || {
+  echo "yuyansdk build.gradle must prefer libc++_shared.so from qiwo-android-rime-core outputs when available" >&2
+  exit 1
+}
+
 grep -q 'verifyQiwoAndroidRimeCoreStlJniLibs' "$gradle_file" || {
   echo "yuyansdk build.gradle must fail clearly when libc++_shared.so is missing" >&2
   exit 1

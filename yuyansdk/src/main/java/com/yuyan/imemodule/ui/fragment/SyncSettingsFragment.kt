@@ -2,6 +2,7 @@ package com.yuyan.imemodule.ui.fragment
 
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.EditTextPreference
@@ -14,6 +15,7 @@ import com.yuyan.imemodule.application.Launcher
 import com.yuyan.imemodule.prefs.AppPrefs
 import com.yuyan.imemodule.sync.InstallationHelper
 import com.yuyan.imemodule.sync.NativeSyncEngine
+import com.yuyan.imemodule.sync.RimeUserDictDiagnostics
 import com.yuyan.imemodule.sync.SyncMode
 import com.yuyan.imemodule.sync.SyncRequest
 import com.yuyan.imemodule.sync.SyncScheduler
@@ -27,7 +29,6 @@ import java.io.File
  * WebDAV 同步设置页面。
  */
 class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sync) {
-
     private val syncPrefs = AppPrefs.getInstance().sync
     private val sp: SharedPreferences
         get() = PreferenceManager.getDefaultSharedPreferences(Launcher.instance.context)
@@ -192,8 +193,19 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
         ).show()
 
         lifecycleScope.launch {
+            var userDictWarning: String? = null
             if (mode != SyncMode.Pull) {
-                syncRimeUserData()
+                val exportOk = syncRimeUserData("manual-export", rimeUserDir, device)
+                val exportSnapshot = RimeUserDictDiagnostics.logSnapshot(
+                    "manual-after-export",
+                    rimeUserDir,
+                    device
+                )
+                if (!exportOk) {
+                    userDictWarning = "Rime user data export failed."
+                } else {
+                    userDictWarning = RimeUserDictDiagnostics.warningForMissingLocalUserDb(exportSnapshot)
+                }
             }
 
             val request = SyncRequest(
@@ -209,14 +221,25 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
             val summary = NativeSyncEngine.execute(request)
 
             if (!summary.hasErrors) {
-                syncRimeUserData()
+                val importOk = syncRimeUserData("manual-import", rimeUserDir, device)
+                val importSnapshot = RimeUserDictDiagnostics.logSnapshot(
+                    "manual-after-import",
+                    rimeUserDir,
+                    device
+                )
+                if (!importOk) {
+                    userDictWarning = "Rime user data import/export failed."
+                } else if (userDictWarning == null) {
+                    userDictWarning = RimeUserDictDiagnostics.warningForMissingLocalUserDb(importSnapshot)
+                }
             }
 
-            val message = when {
+            val baseMessage = when {
                 summary.hasErrors -> summary.errors.joinToString("\n")
                 summary.messages.isNotEmpty() -> summary.messages.joinToString("\n")
                 else -> getString(com.yuyan.imemodule.R.string.sync_success)
             }
+            val message = listOfNotNull(baseMessage, userDictWarning).joinToString("\n")
 
             requireActivity().runOnUiThread {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
@@ -230,16 +253,24 @@ class SyncSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance().sy
         }
     }
 
-    private fun syncRimeUserData(): Boolean {
+    private fun syncRimeUserData(stage: String, rimeUserDir: File, device: String): Boolean {
+        RimeUserDictDiagnostics.logSnapshot("$stage-before", rimeUserDir, device)
         return try {
             Rime.getInstance(false)
-            QiwoSync.syncUserData()
-        } catch (_: Throwable) {
+            val ok = QiwoSync.syncUserData()
+            Log.i(TAG, "Rime sync_user_data stage=$stage result=$ok")
+            RimeUserDictDiagnostics.logSnapshot("$stage-after", rimeUserDir, device)
+            ok
+        } catch (error: Throwable) {
+            Log.e(TAG, "Rime sync_user_data stage=$stage failed", error)
+            RimeUserDictDiagnostics.logSnapshot("$stage-after-error", rimeUserDir, device)
             false
         }
     }
 
     companion object {
+        private const val TAG = "QiwoSyncSettings"
+
         private val autoSyncListener = ManagedPreference.OnChangeListener<Boolean> { _, _ ->
             SyncScheduler.applySchedule()
         }
