@@ -33,6 +33,12 @@ grep -q 'SCHEMA_FROST = "rime_frost"' "$constant_file" || {
   exit 1
 }
 
+rime_dict_version="$(sed -nE 's/.*CURRENT_RIME_DICT_DATA_VERSIOM = ([0-9]+).*/\1/p' "$constant_file")"
+if [[ -z "$rime_dict_version" || "$rime_dict_version" -le 2026061303 ]]; then
+  echo "Full frost migration must bump CURRENT_RIME_DICT_DATA_VERSIOM above stale prebuilt-cache builds" >&2
+  exit 1
+fi
+
 if grep -q 'SCHEMA_FROST_FULL\|rime_frost_android\|stableSchemaForLegacyRime\|isUnsupportedFrostSchema' "$constant_file"; then
   echo "CustomConstant must not keep Android-only frost aliases or legacy fallback helpers" >&2
   exit 1
@@ -42,6 +48,30 @@ if grep -q 'migrateUnsupportedFrostSchemasToLegacy\|Migrated unsupported Rime sc
   echo "Launcher must not migrate canonical frost schemas back to legacy pinyin" >&2
   exit 1
 fi
+
+awk '
+  /copyFileOrDir\(context, "rime_frost"/ {
+    frost_copy = NR
+    if ($0 !~ /true\)/) exit 2
+  }
+  /writeDefaultCustom\(\)/ && write_custom == 0 { write_custom = NR }
+  /clearRimeBuildCache\(\)/ && clear_build == 0 { clear_build = NR }
+  /setValue\(CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM\)/ { set_version = NR }
+  END { exit frost_copy > 0 && write_custom > frost_copy && clear_build > write_custom && set_version > clear_build ? 0 : 1 }
+' "$launcher_file" || {
+  echo "Launcher must overwrite packaged frost assets and clear stale Rime build cache before marking migration complete" >&2
+  exit 1
+}
+
+grep -q 'java.io.File(CustomConstant.RIME_DICT_PATH, "build")' "$launcher_file" || {
+  echo "Launcher must target the Rime build cache directory for full-Rime migration cleanup" >&2
+  exit 1
+}
+
+grep -q 'deleteRecursively()' "$launcher_file" || {
+  echo "Launcher must recursively delete stale Rime build artifacts before full-Rime startup" >&2
+  exit 1
+}
 
 awk '
   /schema_list:/ { in_list = 1; next }

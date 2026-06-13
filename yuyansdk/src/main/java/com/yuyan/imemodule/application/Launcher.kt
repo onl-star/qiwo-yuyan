@@ -47,10 +47,11 @@ class Launcher {
                 //rime词库（含 build/ 预编译 schema）
                 copyFileOrDir(context, "rime", "", CustomConstant.RIME_DICT_PATH, true)
                 copyFileOrDir(context, "hw", "", CustomConstant.HW_DICT_PATH, true)
-                // rime-frost 白霜拼音方案（不覆盖已有文件，保护原预编译方案）
-                copyFileOrDir(context, "rime_frost", "", CustomConstant.RIME_DICT_PATH, false)
+                // rime-frost 白霜拼音方案。升级 full Rime 后需要覆盖旧版方案文件，用户词库不在这里。
+                copyFileOrDir(context, "rime_frost", "", CustomConstant.RIME_DICT_PATH, true)
                 // 写入 default.custom.yaml
                 writeDefaultCustom()
+                clearRimeBuildCache()
                 AppPrefs.getInstance().internal.dataDictVersion.setValue(CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM)
             }
             Kernel.resetIme()  // 解决词库复制慢，导致先调用初始化问题
@@ -90,6 +91,13 @@ patch:
             customFile.writeText(customYaml)
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    private fun clearRimeBuildCache() {
+        val buildDir = java.io.File(CustomConstant.RIME_DICT_PATH, "build")
+        if (buildDir.exists() && !buildDir.deleteRecursively()) {
+            android.util.Log.w("QiwoLauncher", "Failed to delete stale Rime build directory")
         }
     }
 
