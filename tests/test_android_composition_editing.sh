@@ -108,6 +108,16 @@ grep -q 'replaceCompositionTextAtCaret' "$rime_engine_file" || {
   exit 1
 }
 
+grep -q 'rebuildCompositionText(updatedComposition)' "$rime_engine_file" || {
+  echo "RimeEngine must rebuild composition text when direct replacement fails" >&2
+  exit 1
+}
+
+grep -q '?: caret' "$rime_engine_file" || {
+  echo "RimeEngine active composition edits must not fall back to ordinary end-of-composition deletion" >&2
+  exit 1
+}
+
 if grep -q 'Rime.setCompositionCaret' "$rime_engine_file"; then
   echo "RimeEngine must not depend on native Rime caret movement for editable composition text" >&2
   exit 1

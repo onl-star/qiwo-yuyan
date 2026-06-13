@@ -332,7 +332,7 @@ object RimeEngine {
         if (!isCompositionCaretActive()) return false
         restoreVisibleRawPinyinCompositionIfNeeded()
         val caret = clampCompositionCaret(compositionCaret ?: Rime.compositionText.length)
-        val nextCaret = replaceCompositionTextAtCaret(caret, insertedText = key) ?: return false
+        val nextCaret = replaceCompositionTextAtCaret(caret, insertedText = key) ?: caret
         updateCandidatesOrCommitText()
         keyRecordStack.clear()
         syncCompositionCaretAfterTextReplace(nextCaret)
@@ -344,7 +344,7 @@ object RimeEngine {
         restoreVisibleRawPinyinCompositionIfNeeded()
         val caret = clampCompositionCaret(compositionCaret ?: Rime.compositionText.length)
         if (caret <= 0) return true
-        val nextCaret = replaceCompositionTextAtCaret(caret, deleteBeforeCaret = true) ?: return false
+        val nextCaret = replaceCompositionTextAtCaret(caret, deleteBeforeCaret = true) ?: caret
         updateCandidatesOrCommitText()
         keyRecordStack.clear()
         syncCompositionCaretAfterTextReplace(nextCaret)
@@ -367,14 +367,22 @@ object RimeEngine {
                 insertedText +
                 composition.substring(safeCaret)
         val replaced = if (updatedComposition.isEmpty()) {
-            Rime.replaceKey(0, composition.length, "").also {
-                if (!it) Rime.clearComposition()
-            }
+            Rime.clearComposition()
             true
         } else {
-            Rime.replaceKey(0, composition.length, updatedComposition)
+            Rime.replaceKey(0, composition.length, updatedComposition) ||
+                    rebuildCompositionText(updatedComposition)
         }
         return if (replaced) deleteStart + insertedText.length else null
+    }
+
+    private fun rebuildCompositionText(composition: String): Boolean {
+        Rime.clearComposition()
+        composition.forEach { char ->
+            if (!char.isLetterOrDigit() && char != '\'') return false
+            if (!Rime.processKey(char.code, 0)) return false
+        }
+        return true
     }
 
     private fun syncCompositionCaretAfterTextReplace(targetCaret: Int) {
