@@ -51,6 +51,7 @@ class Launcher {
                 copyFileOrDir(context, "rime_frost", "", CustomConstant.RIME_DICT_PATH, false)
                 // 写入 default.custom.yaml
                 writeDefaultCustom()
+                migrateDefaultSchemaToFrost()
                 AppPrefs.getInstance().internal.dataDictVersion.setValue(CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM)
             }
             Kernel.resetIme()  // 解决词库复制慢，导致先调用初始化问题
@@ -65,12 +66,15 @@ class Launcher {
 
     /**
      * 写入 default.custom.yaml，包含所有可用输入方案。
-     * 原 YuyanIme 预编译方案在前（已验证可用），rime-frost 方案在后（需编译词库）。
+     * Qiwo 默认优先使用白霜拼音，同时保留旧 YuyanIme 预编译方案作为可选兼容方案。
      */
     private fun writeDefaultCustom() {
         val customYaml = """
 patch:
   schema_list:
+    - schema: rime_frost
+    - schema: rime_frost_t9
+    - schema: rime_frost_double_pinyin_flypy
     - schema: pinyin
     - schema: t9_pinyin
     - schema: double_pinyin_natural
@@ -82,9 +86,6 @@ patch:
     - schema: double_pinyin_ls17
     - schema: stroke
     - schema: english
-    - schema: rime_frost
-    - schema: rime_frost_t9
-    - schema: rime_frost_double_pinyin_flypy
   "menu/page_size": 8
 """.trimIndent()
         val customFile = java.io.File(CustomConstant.RIME_DICT_PATH, "default.custom.yaml")
@@ -92,6 +93,14 @@ patch:
             customFile.writeText(customYaml)
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    private fun migrateDefaultSchemaToFrost() {
+        val internalPrefs = AppPrefs.getInstance().internal
+        if (internalPrefs.pinyinModeRime.getValue() == CustomConstant.SCHEMA_ZH_QWERTY) {
+            internalPrefs.pinyinModeRime.setValue(CustomConstant.SCHEMA_FROST)
+            android.util.Log.i("QiwoLauncher", "Migrated default Rime schema from pinyin to rime_frost")
         }
     }
 

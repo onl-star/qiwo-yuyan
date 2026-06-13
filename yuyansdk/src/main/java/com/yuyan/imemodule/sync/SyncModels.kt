@@ -36,7 +36,7 @@ data class SyncRequest(
     /** 同步模式 */
     val mode: SyncMode,
     /** 前端标识（用于 manifest） */
-    val frontend: String = "QiwoIme",
+    val frontend: String = "qiwo-yuyan",
     /** rime-frost 资源目录（assets 中的路径） */
     val frostDir: File? = null,
     /** 仅试运行，不实际写入 */

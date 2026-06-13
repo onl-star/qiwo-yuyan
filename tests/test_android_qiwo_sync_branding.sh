@@ -4,6 +4,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 sync_bridge_file="$root/yuyansdk/src/main/java/com/qiwo/sync/QiwoSync.kt"
+sync_models_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/sync/SyncModels.kt"
 native_sync_engine_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/sync/NativeSyncEngine.kt"
 settings_activity_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/ui/activity/SettingsActivity.kt"
 setup_activity_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/ui/setup/SetupActivity.kt"
@@ -15,6 +16,7 @@ about_fragment_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/ui/fragmen
 
 for file in \
   "$sync_bridge_file" \
+  "$sync_models_file" \
   "$native_sync_engine_file" \
   "$settings_activity_file" \
   "$setup_activity_file" \
@@ -29,15 +31,20 @@ for file in \
   }
 done
 
-grep -q 'put("frontend", "qiwoime")' "$sync_bridge_file" || {
-  echo "Android sync bridge must emit frontend=qiwoime" >&2
+grep -q 'put("frontend", "qiwo-yuyan")' "$sync_bridge_file" || {
+  echo "Android sync bridge must emit frontend=qiwo-yuyan" >&2
   exit 1
 }
 
-if grep -q 'put("frontend", "yuyanime")' "$sync_bridge_file"; then
-  echo "Android sync bridge must not emit legacy frontend=yuyanime" >&2
+if grep -Eq 'put\("frontend", "(yuyanime|qiwoime|QiwoIme)"\)' "$sync_bridge_file"; then
+  echo "Android sync bridge must not emit legacy frontend identity" >&2
   exit 1
 fi
+
+grep -q 'val frontend: String = "qiwo-yuyan"' "$sync_models_file" || {
+  echo "Android sync request model must default frontend=qiwo-yuyan" >&2
+  exit 1
+}
 
 if grep -q 'SyncEngine().execute' "$native_sync_engine_file"; then
   echo "NativeSyncEngine must not fall back to the Kotlin SyncEngine" >&2

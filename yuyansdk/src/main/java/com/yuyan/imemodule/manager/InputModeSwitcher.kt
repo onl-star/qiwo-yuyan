@@ -349,7 +349,7 @@ object InputModeSwitcher {
 
     /**
      * 根据键盘布局选择对应的 Rime 方案。
-     * 默认使用原 YuyanIme 预编译方案（已验证），frost 系列需手动切换。
+     * 默认使用 Qiwo 白霜拼音，同时保留旧方案作为用户显式选择后的兼容路径。
      */
     private fun getSchemaForMode(inputMode: Int): String {
         val layout = inputMode and MASK_SKB_LAYOUT
@@ -370,8 +370,8 @@ object InputModeSwitcher {
                     savedSchema.startsWith(CustomConstant.SCHEMA_FROST_DOUBLE_PREFIX) -> savedSchema
                     // 用户手动选了 frost 系列
                     savedSchema == CustomConstant.SCHEMA_FROST -> savedSchema
-                    // 默认使用原 pinyin（预编译，已验证）
-                    else -> CustomConstant.SCHEMA_ZH_QWERTY
+                    // 默认使用白霜拼音
+                    else -> CustomConstant.SCHEMA_FROST
                 }
             }
             MASK_SKB_LAYOUT_QWERTY_ABC -> CustomConstant.SCHEMA_EN
