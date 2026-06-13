@@ -3,6 +3,7 @@ package com.yuyan.imemodule.candidate
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.WindowManager
@@ -113,6 +114,11 @@ class CandidateView(context: Context, private val service: ImeService) : Lifecyc
     }
 
     fun processKeyUp(event: KeyEvent): Boolean {
+        Log.i(
+            "QiwoRimeEngine",
+            "CandidateView processKeyUp keyCode=${event.keyCode} unicode=${event.unicodeChar} " +
+                "chinese=${InputModeSwitcher.isChinese} english=${InputModeSwitcher.isEnglish}"
+        )
         InputModeSwitcher.resetCharCase()
         return if (processFunctionKeys(event)) true
         else if (InputModeSwitcher.isChinese) processInput(event)

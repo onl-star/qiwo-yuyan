@@ -12,6 +12,7 @@ import android.view.GestureDetector.SimpleOnGestureListener
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
+import android.util.Log
 import com.yuyan.imemodule.data.theme.ThemeManager
 import com.yuyan.imemodule.entity.keyboard.SoftKey
 import com.yuyan.imemodule.entity.keyboard.SoftKeyboard
@@ -183,7 +184,13 @@ open class BaseKeyboardView(mContext: Context?) : View(mContext) {
                 mCurrentKey = getKeyIndices(me.x.toInt(), me.y.toInt())
                 removeMessages()
                 if (!mAbortKey && !mLongPressKey && mCurrentKey != null) {
-                    mService?.responseKeyEvent(mCurrentKey!!)
+                    val key = mCurrentKey!!
+                    Log.i(
+                        "QiwoRimeEngine",
+                        "BaseKeyboardView dispatch soft key view=${javaClass.simpleName} " +
+                            "code=${key.code} label=${key.keyLabel} small=${key.getmKeyLabelSmall()}"
+                    )
+                    mService?.responseKeyEvent(key)
                 }
                 currentDistanceX = 0F
                 currentDistanceY = 0F

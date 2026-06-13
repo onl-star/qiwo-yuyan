@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
+import android.util.Log
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -309,6 +310,13 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
 
     override fun responseKeyEvent(sKey: SoftKey) {
         val keyCode = sKey.code
+        Log.i(
+            "QiwoRimeEngine",
+            "InputView responseKey code=$keyCode label=${sKey.keyLabel} small=${sKey.getmKeyLabelSmall()} " +
+                "userDef=${sKey.isUserDefKey} uniStr=${sKey.isUniStrKey} " +
+                "chinese=${InputModeSwitcher.isChinese} english=${InputModeSwitcher.isEnglish} " +
+                "candidatesEmpty=${DecodingInfo.isCandidatesEmpty} associate=${DecodingInfo.isAssociate}"
+        )
         if(sKey.isUserDefKey)processUserDefKey(keyCode, sKey.keyLabel)
         else if(sKey.isUniStrKey){
             if (!DecodingInfo.isAssociate && !DecodingInfo.isCandidatesEmpty) chooseAndUpdate()
@@ -336,6 +344,12 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
     }
 
     fun processKeyUp(event: KeyEvent): Boolean {
+        Log.i(
+            "QiwoRimeEngine",
+            "InputView processKeyUp keyCode=${event.keyCode} unicode=${event.unicodeChar} " +
+                "system=${event.isSystem} function=${isFunctionKey(event.keyCode)} " +
+                "chinese=${InputModeSwitcher.isChinese} english=${InputModeSwitcher.isEnglish}"
+        )
         if(event.isSystem) return processSystemKeys(event)
         else if(isFunctionKey(event.keyCode)){
             processFunctionKey(event)

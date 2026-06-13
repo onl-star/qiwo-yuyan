@@ -76,7 +76,13 @@ object RimeEngine {
     fun onNormalKey(event: KeyEvent) {
         restoreVisibleRawPinyinCompositionIfNeeded()
         val keyChar = resolveRimeKeyCode(event)
-        if (keyRecordStack.pushKey(event)) Rime.processKey(keyChar, rimeModifierMask(event))
+        val pushed = keyRecordStack.pushKey(event)
+        Log.i(
+            TAG,
+            "onNormalKey keyCode=${event.keyCode} unicode=${event.unicodeChar} " +
+                "resolved=$keyChar pushed=$pushed schema=${getCurrentRimeSchema()}"
+        )
+        if (pushed) Rime.processKey(keyChar, rimeModifierMask(event))
         updateCandidatesOrCommitText()
     }
 
