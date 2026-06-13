@@ -33,7 +33,6 @@ def qiwoAndroidRimeCoreDir = rootProject.file(qiwoAndroidRimeCorePath)
 def qiwoAndroidRimeCorePrebuiltJniLibsDir = new File(qiwoAndroidRimeCoreDir, 'target/android-jniLibs')
 def qiwoAndroidRimeCoreGeneratedJniLibsDir = file("$buildDir/generated/jniLibs/qiwoAndroidRimeCore")
 def qiwoAndroidRimeCoreStlGeneratedJniLibsDir = file("$buildDir/generated/jniLibs/qiwoAndroidRimeCoreStl")
-def qiwoAndroidLegacyJniLibsDir = file("$buildDir/generated/jniLibs/qiwoAndroidLegacy")
 def qiwoAndroidRimeCoreAbis = ['arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64']
 def qiwoAndroidRimeCoreRequiredLibs = ['libyuyanime.so', 'librime.so']
 def qiwoAndroidRimeCoreStlTriples = [
@@ -174,25 +173,6 @@ def verifyQiwoAndroidRimeCoreStlJniLibs = tasks.register('verifyQiwoAndroidRimeC
     }
 }
 
-def copyQiwoAndroidLegacyJniLibs = tasks.register('copyQiwoAndroidLegacyJniLibs', Copy) {
-    from('libs') {
-        if (qiwoAndroidRimeCorePackage) {
-            exclude '**/libyuyanime.so'
-        }
-    }
-    if (qiwoAndroidRimeCorePackage) {
-        qiwoAndroidRimeCoreAbis.each { abi ->
-            from("libs/${abi}") {
-                include 'libyuyanime.so'
-                into abi
-                rename 'libyuyanime.so', 'libqiwo_legacy_yuyanime.so'
-            }
-        }
-    }
-    into(qiwoAndroidLegacyJniLibsDir)
-}
-
-
 android {
     compileSdk 36
     namespace 'com.yuyan.imemodule'
@@ -248,7 +228,6 @@ android {
             jniLibs.srcDirs = [
                     qiwoAndroidRimeCoreGeneratedJniLibsDir,
                     qiwoAndroidRimeCoreStlGeneratedJniLibsDir,
-                    qiwoAndroidLegacyJniLibsDir,
                     qiwoInputFormatPrebuiltJniLibsDir,
                     qiwoInputFormatGeneratedJniLibsDir
             ]
@@ -273,7 +252,6 @@ tasks.matching { it.name == 'preBuild' }.configureEach {
     dependsOn(verifyQiwoInputFormatJniLibs)
     dependsOn(verifyQiwoAndroidRimeCoreJniLibs)
     dependsOn(verifyQiwoAndroidRimeCoreStlJniLibs)
-    dependsOn(copyQiwoAndroidLegacyJniLibs)
 }
 
 dependencies {
