@@ -438,7 +438,7 @@ object RimeEngine {
     }
 
     private fun isFullKeyboardPinyinSchema(schema: String): Boolean {
-        return schema == CustomConstant.SCHEMA_ZH_QWERTY
+        return schema == CustomConstant.SCHEMA_ZH_QWERTY || schema == CustomConstant.SCHEMA_FROST
     }
 
     fun selectPinyin(index: Int) {

@@ -51,7 +51,6 @@ class Launcher {
                 copyFileOrDir(context, "rime_frost", "", CustomConstant.RIME_DICT_PATH, false)
                 // 写入 default.custom.yaml
                 writeDefaultCustom()
-                migrateUnsupportedFrostSchemasToLegacy()
                 AppPrefs.getInstance().internal.dataDictVersion.setValue(CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM)
             }
             Kernel.resetIme()  // 解决词库复制慢，导致先调用初始化问题
@@ -66,14 +65,13 @@ class Launcher {
 
     /**
      * 写入 default.custom.yaml，包含所有可用输入方案。
-     * 默认使用稳定的旧方案。
-     * 白霜方案目前不能进入 legacy native runtime：完整白霜依赖 librime-lua，
-     * CI 跨版本预编译的白霜 table 也会让旧 marisa reader 崩溃。
+     * 默认优先使用完整白霜全拼。
      */
     private fun writeDefaultCustom() {
         val customYaml = """
 patch:
   schema_list:
+    - schema: rime_frost
     - schema: pinyin
     - schema: t9_pinyin
     - schema: double_pinyin_natural
@@ -92,19 +90,6 @@ patch:
             customFile.writeText(customYaml)
         } catch (e: Exception) {
             e.printStackTrace()
-        }
-    }
-
-    private fun migrateUnsupportedFrostSchemasToLegacy() {
-        val internalPrefs = AppPrefs.getInstance().internal
-        val currentSchema = internalPrefs.pinyinModeRime.getValue()
-        val stableSchema = CustomConstant.stableSchemaForLegacyRime(currentSchema)
-        if (stableSchema != currentSchema) {
-            internalPrefs.pinyinModeRime.setValue(stableSchema)
-            android.util.Log.i(
-                "QiwoLauncher",
-                "Migrated unsupported Rime schema from $currentSchema to $stableSchema"
-            )
         }
     }
 

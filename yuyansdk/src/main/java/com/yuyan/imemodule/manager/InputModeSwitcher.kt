@@ -263,7 +263,7 @@ object InputModeSwitcher {
      */
     fun switchModeForSetting(value: Pair<Int, String>) {
         val inputMode = value.first or MASK_LANGUAGE_CN
-        val schema = CustomConstant.stableSchemaForLegacyRime(value.second)
+        val schema = value.second
         getInstance().internal.inputMethodPinyinMode.setValue(inputMode)
         getInstance().internal.pinyinModeRime.setValue(schema)
         KeyboardLoaderUtil.instance.clearKeyboardMap()
@@ -350,20 +350,20 @@ object InputModeSwitcher {
 
     /**
      * 根据键盘布局选择对应的 Rime 方案。
-     * 默认使用稳定全拼；白霜方案仅在用户显式选择后使用。
+     * 默认使用完整白霜全拼；旧全拼仍可由用户显式选择。
      */
     private fun getSchemaForMode(inputMode: Int): String {
         val layout = inputMode and MASK_SKB_LAYOUT
-        val savedSchema = CustomConstant.stableSchemaForLegacyRime(getInstance().internal.pinyinModeRime.getValue())
+        val savedSchema = getInstance().internal.pinyinModeRime.getValue()
         return when (layout) {
             MASK_SKB_LAYOUT_T9_PINYIN -> {
                 CustomConstant.SCHEMA_ZH_T9
             }
             MASK_SKB_LAYOUT_QWERTY_PINYIN -> {
                 when {
-                    savedSchema == CustomConstant.SCHEMA_ZH_QWERTY -> savedSchema
+                    savedSchema == CustomConstant.SCHEMA_ZH_QWERTY || savedSchema == CustomConstant.SCHEMA_FROST -> savedSchema
                     savedSchema.startsWith(CustomConstant.SCHEMA_ZH_DOUBLE_FLYPY) -> savedSchema
-                    else -> CustomConstant.SCHEMA_ZH_QWERTY
+                    else -> CustomConstant.SCHEMA_FROST
                 }
             }
             MASK_SKB_LAYOUT_QWERTY_ABC -> CustomConstant.SCHEMA_EN
