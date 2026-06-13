@@ -152,6 +152,11 @@ grep -q 'ref: \${{ github.ref_name }}' "$workflow_file" || {
   exit 1
 }
 
+if [[ "$(grep -Fc 'ref: ${{ github.ref_name }}' "$workflow_file")" -lt 4 ]]; then
+  echo "Android CI must checkout matching qiwo-sync-core and qiwo-android-rime-core branches in debug and release jobs" >&2
+  exit 1
+fi
+
 grep -q 'repository: LeaWron/qiwo-sync-core' "$workflow_file" || {
   echo "Android CI must checkout qiwo-sync-core from LeaWron" >&2
   exit 1
