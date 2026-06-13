@@ -23,6 +23,7 @@ enum class SkbMenuMode {
     OneHanded,
     PinyinT9,
     Pinyin26Jian,
+    Pinyin26Frost,
     PinyinLx17,
     PinyinHandWriting,
     Pinyin26Double,

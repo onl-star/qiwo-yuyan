@@ -180,9 +180,8 @@ jobs:
           if [ -d "$RIME_DIR/build" ] && [ "$(ls -A "$RIME_DIR/build" 2>/dev/null)" ]; then
             echo "=== Precompiled frost binaries ==="
             ls -la "$RIME_DIR/build/"
-            # 合并到原始 build/（不覆盖已有同名文件）
-            cp -n "$RIME_DIR"/build/*.bin "$RIME_BUILD_SRC/" 2>/dev/null || true
-            cp -n "$RIME_DIR"/build/*.txt "$RIME_BUILD_SRC/" 2>/dev/null || true
+            # 合并完整部署产物到原始 build/，否则 Android fullCheck=false 时无法直接选择 frost schema。
+            cp -n "$RIME_DIR"/build/* "$RIME_BUILD_SRC/" 2>/dev/null || true
             echo "=== Merged into assets/rime/build/ ==="
             ls -la "$RIME_BUILD_SRC/" | grep -E "rime_frost|melt_eng" || echo "(new frost binaries added)"
           else

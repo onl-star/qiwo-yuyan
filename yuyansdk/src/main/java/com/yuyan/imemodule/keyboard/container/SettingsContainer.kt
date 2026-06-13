@@ -138,9 +138,16 @@ class SettingsContainer(context: Context, inputView: InputView) : BaseContainer(
         )
         funItems.add(
             SkbFunItem(
-                mContext.getString(R.string.keyboard_name_cn26),
+                mContext.getString(R.string.keyboard_name_cn26_legacy),
                 R.drawable.selece_input_mode_py26,
                 SkbMenuMode.Pinyin26Jian
+            )
+        )
+        funItems.add(
+            SkbFunItem(
+                mContext.getString(R.string.keyboard_name_cn26_frost),
+                R.drawable.selece_input_mode_py26,
+                SkbMenuMode.Pinyin26Frost
             )
         )
         funItems.add(
@@ -190,6 +197,7 @@ class SettingsContainer(context: Context, inputView: InputView) : BaseContainer(
     private fun onKeyboardMenuClick(data: SkbFunItem) {
         val value = when (data.skbMenuMode) {
             SkbMenuMode.Pinyin26Jian -> Pair(InputModeSwitcher.MASK_SKB_LAYOUT_QWERTY_PINYIN, CustomConstant.SCHEMA_ZH_QWERTY)
+            SkbMenuMode.Pinyin26Frost -> Pair(InputModeSwitcher.MASK_SKB_LAYOUT_QWERTY_PINYIN, CustomConstant.SCHEMA_FROST)
             SkbMenuMode.PinyinHandWriting -> Pair(InputModeSwitcher.MASK_SKB_LAYOUT_HANDWRITING, CustomConstant.SCHEMA_ZH_HANDWRITING)
             SkbMenuMode.PinyinLx17 -> Pair(InputModeSwitcher.MASK_SKB_LAYOUT_LX17, CustomConstant.SCHEMA_ZH_DOUBLE_LX17)
             SkbMenuMode.PinyinStroke -> Pair(InputModeSwitcher.MASK_SKB_LAYOUT_STROKE, CustomConstant.SCHEMA_ZH_STROKE)
