@@ -95,7 +95,7 @@ android {
     }
     android.applicationVariants.configureEach { variant ->
         variant.outputs.configureEach {
-            outputFileName = "yuyanIme_${versionCodeDate()}_${variant.buildType.name}.apk"
+            outputFileName = "qiwoIme_${versionCodeDate()}_${variant.buildType.name}.apk"
         }
     }
 }

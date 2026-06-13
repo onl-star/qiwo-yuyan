@@ -3,6 +3,7 @@ set -euo pipefail
 
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 gradle_file="$root/yuyansdk/build.gradle"
+app_gradle_file="$root/app/build.gradle"
 workflow_file="$root/.github/workflows/build.yml"
 artifact_verify_file="$root/tests/verify_android_rime_core_apk_artifact.sh"
 
@@ -13,6 +14,11 @@ artifact_verify_file="$root/tests/verify_android_rime_core_apk_artifact.sh"
 
 [[ -f "$workflow_file" ]] || {
   echo "Missing Android CI workflow: $workflow_file" >&2
+  exit 1
+}
+
+[[ -f "$app_gradle_file" ]] || {
+  echo "Missing Android app build.gradle: $app_gradle_file" >&2
   exit 1
 }
 
@@ -131,6 +137,16 @@ grep -q 'QIWO_ANDROID_RIME_CORE_DIR' "$workflow_file" || {
   exit 1
 }
 
+grep -q 'ref: \${{ github.ref_name }}' "$workflow_file" || {
+  echo "Android CI must checkout the matching qiwo-sync-core branch for cross-repo feature builds" >&2
+  exit 1
+}
+
+grep -q 'repository: LeaWron/qiwo-sync-core' "$workflow_file" || {
+  echo "Android CI must checkout qiwo-sync-core from LeaWron" >&2
+  exit 1
+}
+
 grep -q 'QIWO_ANDROID_RIME_CORE_PACKAGE: "true"' "$workflow_file" || {
   echo "Android CI must package the generated Rime core wrapper for APK runtime verification" >&2
   exit 1
@@ -205,3 +221,13 @@ grep -q 'QiwoRimeCore' "$artifact_verify_file" || {
   echo "APK artifact verifier must assert runtime diagnostic strings are packaged" >&2
   exit 1
 }
+
+grep -q 'outputFileName = "qiwoIme_' "$app_gradle_file" || {
+  echo "Android final APK file name must use qiwoIme_ prefix" >&2
+  exit 1
+}
+
+if grep -q 'outputFileName = "yuyanIme_' "$app_gradle_file"; then
+  echo "Android final APK file name must not use yuyanIme_ prefix" >&2
+  exit 1
+fi

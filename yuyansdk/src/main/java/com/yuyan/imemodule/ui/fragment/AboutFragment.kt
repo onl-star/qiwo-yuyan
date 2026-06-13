@@ -87,7 +87,7 @@ class AboutFragment : PreferenceFragmentCompat() {
                 }
                 addPreference(R.string.build_git_hash, BuildConfig.AppCommitHead) {
                     val commit = BuildConfig.AppCommitHead.substringBefore('-')
-                    val uri = Uri.parse("${CustomConstant.YUYAN_IME_REPO}/commit/${commit}")
+                    val uri = Uri.parse("${CustomConstant.QIWO_IME_REPO}/commit/${commit}")
                     startActivity(Intent(Intent.ACTION_VIEW, uri))
                 }
                 addPreference(R.string.build_time, BuildConfig.AppBuildTime)
@@ -99,7 +99,7 @@ class AboutFragment : PreferenceFragmentCompat() {
                 addPreference(R.string.export_crash_log) {
                     lifecycleScope.launch {
                         exportTimestamp = System.currentTimeMillis()
-                        exportLauncher.launch("yuyanIme_crash_log${TimeUtils.iso8601UTCDateTime(exportTimestamp)}.zip")
+                        exportLauncher.launch("qiwoIme_crash_log${TimeUtils.iso8601UTCDateTime(exportTimestamp)}.zip")
                     }
                 }
             }
@@ -108,5 +108,4 @@ class AboutFragment : PreferenceFragmentCompat() {
 
     }
 }
-
 

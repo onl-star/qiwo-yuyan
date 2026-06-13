@@ -42,7 +42,7 @@ object QiwoSync {
   ): SyncResult {
     val request = JSONObject().apply {
       put("rimeUserDir", rimeUserDir)
-      put("frontend", "yuyanime")
+      put("frontend", "qiwoime")
       put("remoteUrl", remoteUrl)
       if (!username.isNullOrEmpty()) put("username", username)
       if (!password.isNullOrEmpty()) put("password", password)

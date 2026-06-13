@@ -36,8 +36,12 @@ object NativeSyncEngine {
                 conflictsBackedUp = result.conflicts,
                 messages = listOf(result.message).filter { it.isNotBlank() }
             )
-        } catch (_: UnsatisfiedLinkError) {
-            SyncEngine().execute(request)
+        } catch (e: UnsatisfiedLinkError) {
+            SyncSummary(
+                mode = request.mode,
+                deviceId = request.deviceId,
+                errors = listOf("Native sync unavailable: ${e.message ?: "qiwo-sync-core library failed to load."}")
+            )
         } catch (e: Throwable) {
             SyncSummary(
                 mode = request.mode,

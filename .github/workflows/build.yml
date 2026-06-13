@@ -28,7 +28,8 @@ jobs:
       - name: Checkout qiwo-sync-core
         uses: actions/checkout@v6
         with:
-          repository: ${{ github.repository_owner }}/qiwo-sync-core
+          repository: LeaWron/qiwo-sync-core
+          ref: ${{ github.ref_name }}
           path: qiwo-sync-core
 
       - name: Checkout qiwo-input-format-core
@@ -222,7 +223,8 @@ jobs:
       - name: Checkout qiwo-sync-core
         uses: actions/checkout@v6
         with:
-          repository: ${{ github.repository_owner }}/qiwo-sync-core
+          repository: LeaWron/qiwo-sync-core
+          ref: ${{ github.ref_name }}
           path: qiwo-sync-core
 
       - name: Checkout qiwo-input-format-core

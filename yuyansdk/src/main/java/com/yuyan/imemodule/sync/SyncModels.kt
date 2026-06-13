@@ -1,7 +1,6 @@
 package com.yuyan.imemodule.sync
 
 import java.io.File
-import java.time.Instant
 
 /**
  * 同步模式，与 qiwo-sync-core 保持一致。
@@ -37,7 +36,7 @@ data class SyncRequest(
     /** 同步模式 */
     val mode: SyncMode,
     /** 前端标识（用于 manifest） */
-    val frontend: String = "YuyanIme",
+    val frontend: String = "QiwoIme",
     /** rime-frost 资源目录（assets 中的路径） */
     val frostDir: File? = null,
     /** 仅试运行，不实际写入 */
@@ -59,28 +58,4 @@ data class SyncSummary(
 ) {
     val totalFiles: Int get() = uploaded + downloaded
     val hasErrors: Boolean get() = errors.isNotEmpty()
-}
-
-/**
- * 清单中的文件条目。
- */
-data class SyncFileEntry(
-    val relativePath: String,
-    val sha256: String,
-    val sizeBytes: Long,
-    val lastWriteUtc: Instant
-)
-
-/**
- * 同步清单：记录每个文件的 hash 和时间戳，用于冲突检测。
- */
-data class SyncManifest(
-    val deviceId: String,
-    val frontend: String = "YuyanIme",
-    val updatedAtUtc: Instant = Instant.now(),
-    val files: Map<String, SyncFileEntry> = emptyMap()
-) {
-    companion object {
-        val Empty = SyncManifest(deviceId = "", files = emptyMap())
-    }
 }

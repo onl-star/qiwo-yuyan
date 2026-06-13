@@ -72,10 +72,6 @@ open class SettingsActivity : AppCompatActivity() {
                 else -> viewModel.enableToolbarShadow()
             }
         }
-        if(!AppPrefs.getInstance().internal.privacyPolicySure.getValue()){
-            navController.navigate(R.id.action_settingsFragment_to_privacyPolicyFragment)
-            return
-        }
         if (SetupActivity.shouldShowUp()) {
             startActivity<SetupActivity>()
         }
