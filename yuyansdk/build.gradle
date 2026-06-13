@@ -32,11 +32,39 @@ def qiwoAndroidRimeCorePath = System.getenv('QIWO_ANDROID_RIME_CORE_DIR') ?: '..
 def qiwoAndroidRimeCoreDir = rootProject.file(qiwoAndroidRimeCorePath)
 def qiwoAndroidRimeCorePrebuiltJniLibsDir = new File(qiwoAndroidRimeCoreDir, 'target/android-jniLibs')
 def qiwoAndroidRimeCoreGeneratedJniLibsDir = file("$buildDir/generated/jniLibs/qiwoAndroidRimeCore")
+def qiwoAndroidRimeCoreStlGeneratedJniLibsDir = file("$buildDir/generated/jniLibs/qiwoAndroidRimeCoreStl")
 def qiwoAndroidLegacyJniLibsDir = file("$buildDir/generated/jniLibs/qiwoAndroidLegacy")
 def qiwoAndroidRimeCoreAbis = ['arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64']
+def qiwoAndroidRimeCoreStlTriples = [
+        'arm64-v8a'  : 'aarch64-linux-android',
+        'armeabi-v7a': 'arm-linux-androideabi',
+        'x86'        : 'i686-linux-android',
+        'x86_64'     : 'x86_64-linux-android',
+]
 def qiwoAndroidRimeCorePackage = ['1', 'true', 'yes', 'on'].contains(
         (System.getenv('QIWO_ANDROID_RIME_CORE_PACKAGE') ?: 'false').toLowerCase(java.util.Locale.ROOT)
 )
+def qiwoAndroidNdkHome = System.getenv('ANDROID_NDK_HOME') ?: System.getenv('ANDROID_NDK_ROOT') ?: System.getenv('NDK_HOME')
+
+def qiwoAndroidNdkHostTag = {
+    def os = System.getProperty('os.name').toLowerCase(java.util.Locale.ROOT)
+    if (os.contains('linux')) return 'linux-x86_64'
+    if (os.contains('mac')) return 'darwin-x86_64'
+    if (os.contains('windows')) return 'windows-x86_64'
+    return ''
+}
+
+def qiwoAndroidRimeCoreStlSource = { String abi ->
+    if (!qiwoAndroidNdkHome) return null
+    def ndkDir = file(qiwoAndroidNdkHome)
+    def triple = qiwoAndroidRimeCoreStlTriples[abi]
+    def hostTag = qiwoAndroidNdkHostTag()
+    def candidates = [
+            new File(ndkDir, "toolchains/llvm/prebuilt/${hostTag}/sysroot/usr/lib/${triple}/libc++_shared.so"),
+            new File(ndkDir, "sources/cxx-stl/llvm-libc++/libs/${abi}/libc++_shared.so"),
+    ]
+    return candidates.find { it.exists() }
+}
 
 def copyQiwoInputFormatJniLibs = tasks.register('copyQiwoInputFormatJniLibs', Copy) {
     into(qiwoInputFormatGeneratedJniLibsDir)
@@ -93,6 +121,38 @@ def verifyQiwoAndroidRimeCoreJniLibs = tasks.register('verifyQiwoAndroidRimeCore
                     "Missing libyuyanime.so for Android ABI(s): ${missingAbis.join(', ')}. " +
                             "Build qiwo-android-rime-core and place outputs under " +
                             "${qiwoAndroidRimeCorePrebuiltJniLibsDir}.")
+        }
+    }
+}
+
+def copyQiwoAndroidRimeCoreStlJniLibs = tasks.register('copyQiwoAndroidRimeCoreStlJniLibs', Copy) {
+    qiwoAndroidRimeCoreAbis.each { abi ->
+        def stlSource = qiwoAndroidRimeCoreStlSource(abi)
+        if (stlSource != null) {
+            from(stlSource) {
+                into abi
+            }
+        }
+    }
+    into(qiwoAndroidRimeCoreStlGeneratedJniLibsDir)
+    onlyIf {
+        qiwoAndroidRimeCorePackage
+    }
+}
+
+def verifyQiwoAndroidRimeCoreStlJniLibs = tasks.register('verifyQiwoAndroidRimeCoreStlJniLibs') {
+    dependsOn(copyQiwoAndroidRimeCoreStlJniLibs)
+    doLast {
+        if (!qiwoAndroidRimeCorePackage) {
+            return
+        }
+        def missingAbis = qiwoAndroidRimeCoreAbis.findAll { abi ->
+            !new File(qiwoAndroidRimeCoreStlGeneratedJniLibsDir, "${abi}/libc++_shared.so").exists()
+        }
+        if (!missingAbis.isEmpty()) {
+            throw new GradleException(
+                    "Missing libc++_shared.so for Android ABI(s): ${missingAbis.join(', ')}. " +
+                            "Set ANDROID_NDK_HOME, ANDROID_NDK_ROOT, or NDK_HOME so the generated Rime core wrapper can package the Android C++ runtime.")
         }
     }
 }
@@ -170,6 +230,7 @@ android {
         offline {
             jniLibs.srcDirs = [
                     qiwoAndroidRimeCoreGeneratedJniLibsDir,
+                    qiwoAndroidRimeCoreStlGeneratedJniLibsDir,
                     qiwoAndroidLegacyJniLibsDir,
                     qiwoInputFormatPrebuiltJniLibsDir,
                     qiwoInputFormatGeneratedJniLibsDir
@@ -180,6 +241,7 @@ android {
     packagingOptions {
         jniLibs {
             pickFirsts += ['**/libyuyanime.so']
+            pickFirsts += ['**/libc++_shared.so']
         }
     }
 
@@ -193,6 +255,7 @@ android {
 tasks.matching { it.name == 'preBuild' }.configureEach {
     dependsOn(verifyQiwoInputFormatJniLibs)
     dependsOn(verifyQiwoAndroidRimeCoreJniLibs)
+    dependsOn(verifyQiwoAndroidRimeCoreStlJniLibs)
     dependsOn(copyQiwoAndroidLegacyJniLibs)
 }
 

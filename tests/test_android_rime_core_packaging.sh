@@ -51,6 +51,11 @@ grep -q 'libqiwo_legacy_yuyanime.so' "$gradle_file" || {
   exit 1
 }
 
+grep -q 'libc++_shared.so' "$gradle_file" || {
+  echo "yuyansdk build.gradle must package Android C++ runtime for the generated Rime core wrapper" >&2
+  exit 1
+}
+
 grep -q "rename 'libyuyanime.so', 'libqiwo_legacy_yuyanime.so'" "$gradle_file" || {
   echo "yuyansdk build.gradle must rename the legacy Rime runtime for the generated wrapper core" >&2
   exit 1
@@ -76,6 +81,21 @@ grep -q 'qiwoAndroidRimeCoreGeneratedJniLibsDir' "$gradle_file" || {
   exit 1
 }
 
+grep -q 'qiwoAndroidRimeCoreStlGeneratedJniLibsDir' "$gradle_file" || {
+  echo "yuyansdk build.gradle must stage Android C++ runtime for the generated Rime core wrapper" >&2
+  exit 1
+}
+
+grep -q 'copyQiwoAndroidRimeCoreStlJniLibs' "$gradle_file" || {
+  echo "yuyansdk build.gradle must copy libc++_shared.so from the Android NDK" >&2
+  exit 1
+}
+
+grep -q 'verifyQiwoAndroidRimeCoreStlJniLibs' "$gradle_file" || {
+  echo "yuyansdk build.gradle must fail clearly when libc++_shared.so is missing" >&2
+  exit 1
+}
+
 grep -q 'qiwoAndroidLegacyJniLibsDir' "$gradle_file" || {
   echo "yuyansdk build.gradle must stage legacy JNI libs through a filtered generated directory" >&2
   exit 1
@@ -98,6 +118,11 @@ grep -q 'jniLibs.srcDirs' "$gradle_file" || {
 
 grep -q 'dependsOn(verifyQiwoAndroidRimeCoreJniLibs)' "$gradle_file" || {
   echo "yuyansdk preBuild must depend on verifyQiwoAndroidRimeCoreJniLibs" >&2
+  exit 1
+}
+
+grep -q 'dependsOn(verifyQiwoAndroidRimeCoreStlJniLibs)' "$gradle_file" || {
+  echo "yuyansdk preBuild must depend on verifyQiwoAndroidRimeCoreStlJniLibs" >&2
   exit 1
 }
 
@@ -168,6 +193,11 @@ grep -q 'verify_android_rime_core_apk_artifact.sh' "$workflow_file" || {
 
 grep -q 'libqiwo_legacy_yuyanime.so' "$artifact_verify_file" || {
   echo "APK artifact verifier must assert the packaged legacy Rime backend library" >&2
+  exit 1
+}
+
+grep -q 'libc++_shared.so' "$artifact_verify_file" || {
+  echo "APK artifact verifier must assert the Android C++ runtime library is packaged" >&2
   exit 1
 }
 
