@@ -23,6 +23,19 @@ class KeyRecordStack {
         }
     }
 
+    fun rawInputText(): String {
+        return buildString {
+            keyRecords.forEach { inputKey ->
+                when (inputKey) {
+                    is InputKey.Apostrophe -> if (!inputKey.dummy) append("'")
+                    is InputKey.PinyinKey -> append(inputKey.pinyin())
+                    is InputKey.QwertKey, is InputKey.T9Key -> append(inputKey.toString())
+                    else -> Unit
+                }
+            }
+        }
+    }
+
     fun pushKey(event: KeyEvent): Boolean {
         val keyCode = event.keyCode
         val keyChar = event.unicodeChar

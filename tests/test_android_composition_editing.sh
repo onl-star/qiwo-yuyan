@@ -4,6 +4,7 @@ set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
 rime_engine_file="$root/yuyansdk/src/main/java/com/yuyan/inputmethod/RimeEngine.kt"
+key_record_stack_file="$root/yuyansdk/src/main/java/com/yuyan/inputmethod/data/KeyRecordStack.kt"
 kernel_file="$root/yuyansdk/src/main/java/com/yuyan/inputmethod/core/Kernel.kt"
 decoding_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/service/DecodingInfo.kt"
 listener_file="$root/yuyansdk/src/main/java/com/yuyan/imemodule/callback/CandidateViewListener.kt"
@@ -18,7 +19,7 @@ boundary_cases_file="$root/tests/android_composition_boundary_cases.tsv"
 composition_mapping_file="$root/yuyansdk/src/main/java/com/yuyan/inputmethod/util/CompositionEditMapping.kt"
 hidden_separator_cases_file="$root/tests/android_composition_hidden_separator_cases.tsv"
 
-for file in "$rime_engine_file" "$kernel_file" "$decoding_file" "$listener_file" "$soft_bar_file" "$float_bar_file" "$composition_text_view_file" "$composition_magnifier_file" "$input_view_file" "$candidate_view_file"; do
+for file in "$rime_engine_file" "$key_record_stack_file" "$kernel_file" "$decoding_file" "$listener_file" "$soft_bar_file" "$float_bar_file" "$composition_text_view_file" "$composition_magnifier_file" "$input_view_file" "$candidate_view_file"; do
   [[ -f "$file" ]] || {
     echo "Missing expected Android composition editing file: $file" >&2
     exit 1
@@ -42,6 +43,26 @@ grep -q 'private var compositionCaret: Int?' "$rime_engine_file" || {
 
 grep -q 'compositionCaretActive' "$rime_engine_file" || {
   echo "RimeEngine must track active composition editing state" >&2
+  exit 1
+}
+
+grep -q 'editableCompositionText' "$rime_engine_file" || {
+  echo "RimeEngine must keep raw editable composition text separate from Rime preedit" >&2
+  exit 1
+}
+
+grep -q 'resolveEditableCompositionText' "$rime_engine_file" || {
+  echo "RimeEngine must resolve a raw composition text for editing" >&2
+  exit 1
+}
+
+grep -q 'stripLogicalCompositionSeparators' "$rime_engine_file" || {
+  echo "RimeEngine must strip non-user logical separators from editable fallback text" >&2
+  exit 1
+}
+
+grep -q 'rawInputText' "$key_record_stack_file" || {
+  echo "KeyRecordStack must expose user-entered raw input for composition editing" >&2
   exit 1
 }
 
@@ -110,6 +131,17 @@ grep -q 'replaceCompositionTextAtCaret' "$rime_engine_file" || {
 
 grep -q 'rebuildCompositionText(updatedComposition)' "$rime_engine_file" || {
   echo "RimeEngine must rebuild composition text when direct replacement fails" >&2
+  exit 1
+}
+
+awk '
+  /private fun replaceCompositionTextAtCaret\(/ { in_func = 1 }
+  in_func && /Rime\.replaceKey/ { exit 1 }
+  in_func && /rebuildCompositionText\(updatedComposition\)/ { rebuilt = 1 }
+  in_func && /^    private fun / && !/replaceCompositionTextAtCaret/ { in_func = 0 }
+  END { exit rebuilt ? 0 : 1 }
+' "$rime_engine_file" || {
+  echo "RimeEngine.replaceCompositionTextAtCaret must rebuild raw text instead of replacing by Rime preedit length" >&2
   exit 1
 }
 
@@ -352,7 +384,9 @@ composition_display_without_marker() {
 composition_caret_from_display_marker() {
   local display="$1"
   local fallback="$2"
-  if [[ "$display" == *"|"* ]]; then
+  if [[ "$display" == *"|"* && "$fallback" != "-" ]]; then
+    printf '%s' "$fallback"
+  elif [[ "$display" == *"|"* ]]; then
     local before="${display%%|*}"
     before="${before//|/}"
     printf '%s' "${#before}"

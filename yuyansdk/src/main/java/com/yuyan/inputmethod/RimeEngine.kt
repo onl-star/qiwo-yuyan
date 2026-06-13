@@ -25,6 +25,7 @@ object RimeEngine {
     var preCommitText: String = "" // 待提交的文字
     private var compositionCaretActive = false
     private var compositionCaret: Int? = null
+    private var editableCompositionText: String = ""
     private var rawPinyinComposition: String = ""
     private data class ConfirmedPinyinSyllable(
         val syllable: String,
@@ -222,7 +223,9 @@ object RimeEngine {
     }
 
     private fun normalizedVisibleRawComposition(): String? {
-        val visibleRaw = visibleRawPinyinComposition.takeIf { it.isNotEmpty() } ?: Rime.compositionText
+        val visibleRaw = visibleRawPinyinComposition.takeIf { it.isNotEmpty() }
+            ?: editableCompositionText.takeIf { it.isNotEmpty() }
+            ?: Rime.compositionText
         return PinyinSegmentation.normalizeInput(visibleRaw)
     }
 
@@ -286,7 +289,11 @@ object RimeEngine {
     }
 
     fun compositionTextForEditing(): String {
-        return if (isFullKeyboardPinyinCompositionEditable()) Rime.compositionText else ""
+        if (!isFullKeyboardPinyinCompositionEditable()) return ""
+        if (compositionCaretActive && editableCompositionText.isNotEmpty()) {
+            return editableCompositionText
+        }
+        return resolveEditableCompositionText()
     }
 
     fun compositionTextForCaretDisplay(): String {
@@ -306,11 +313,12 @@ object RimeEngine {
             clearCompositionCaret()
             return false
         }
-        val composition = compositionTextForEditing()
+        val composition = resolveEditableCompositionText()
         if (composition.isEmpty()) {
             clearCompositionCaret()
             return false
         }
+        editableCompositionText = composition
         compositionCaret = caret.coerceIn(0, composition.length)
         compositionCaretActive = true
         return true
@@ -319,6 +327,7 @@ object RimeEngine {
     fun clearCompositionCaret() {
         compositionCaretActive = false
         compositionCaret = null
+        editableCompositionText = ""
     }
 
     fun compositionTextForDisplay(): String {
@@ -331,7 +340,7 @@ object RimeEngine {
     fun insertCompositionAtCaret(key: String): Boolean {
         if (!isCompositionCaretActive()) return false
         restoreVisibleRawPinyinCompositionIfNeeded()
-        val caret = clampCompositionCaret(compositionCaret ?: Rime.compositionText.length)
+        val caret = clampCompositionCaret(compositionCaret ?: compositionTextForEditing().length)
         val nextCaret = replaceCompositionTextAtCaret(caret, insertedText = key) ?: caret
         updateCandidatesOrCommitText()
         keyRecordStack.clear()
@@ -342,7 +351,7 @@ object RimeEngine {
     fun deleteCompositionBeforeCaret(): Boolean {
         if (!isCompositionCaretActive()) return false
         restoreVisibleRawPinyinCompositionIfNeeded()
-        val caret = clampCompositionCaret(compositionCaret ?: Rime.compositionText.length)
+        val caret = clampCompositionCaret(compositionCaret ?: compositionTextForEditing().length)
         if (caret <= 0) return true
         val nextCaret = replaceCompositionTextAtCaret(caret, deleteBeforeCaret = true) ?: caret
         updateCandidatesOrCommitText()
@@ -352,7 +361,17 @@ object RimeEngine {
     }
 
     private fun clampCompositionCaret(caret: Int): Int {
-        return caret.coerceIn(0, Rime.compositionText.length)
+        return caret.coerceIn(0, compositionTextForEditing().length)
+    }
+
+    private fun resolveEditableCompositionText(): String {
+        visibleRawPinyinComposition.takeIf { it.isNotEmpty() }?.let { return it }
+        keyRecordStack.rawInputText().takeIf { it.isNotEmpty() }?.let { return it }
+        return Rime.compositionText.stripLogicalCompositionSeparators()
+    }
+
+    private fun String.stripLogicalCompositionSeparators(): String {
+        return filter { it != '\'' && it != ';' }
     }
 
     private fun replaceCompositionTextAtCaret(
@@ -360,7 +379,7 @@ object RimeEngine {
         insertedText: String = "",
         deleteBeforeCaret: Boolean = false
     ): Int? {
-        val composition = Rime.compositionText
+        val composition = compositionTextForEditing()
         val safeCaret = caret.coerceIn(0, composition.length)
         val deleteStart = if (deleteBeforeCaret) (safeCaret - 1).coerceAtLeast(0) else safeCaret
         val updatedComposition = composition.substring(0, deleteStart) +
@@ -370,8 +389,10 @@ object RimeEngine {
             Rime.clearComposition()
             true
         } else {
-            Rime.replaceKey(0, composition.length, updatedComposition) ||
-                    rebuildCompositionText(updatedComposition)
+            rebuildCompositionText(updatedComposition)
+        }
+        if (replaced) {
+            editableCompositionText = updatedComposition
         }
         return if (replaced) deleteStart + insertedText.length else null
     }
@@ -387,7 +408,7 @@ object RimeEngine {
 
     private fun syncCompositionCaretAfterTextReplace(targetCaret: Int) {
         if (isFullKeyboardPinyinCompositionEditable()) {
-            compositionCaret = targetCaret.coerceIn(0, Rime.compositionText.length)
+            compositionCaret = targetCaret.coerceIn(0, compositionTextForEditing().length)
             compositionCaretActive = true
         } else {
             clearCompositionCaret()

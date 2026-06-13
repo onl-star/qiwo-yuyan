@@ -11,6 +11,11 @@ backspace_raw_beginning	mangao	|mangao	0	backspace	mangao	0
 backspace_raw_before_g_boundary	mangao	man|gao	3	backspace	magao	2	mangao
 raw_before_g_boundary	mangao	man|gao	3	none	mangao	3
 raw_after_g_boundary	mangao	mang|ao	4	none	mangao	4
+logical_separator_before_boundary	nihao	ni|'hao	2	none	nihao	2
+logical_separator_after_boundary	nihao	ni'|hao	2	none	nihao	2
+logical_separator_before_boundary_backspace	nihao	ni|'hao	2	backspace	nhao	1	nihao
+logical_separator_after_boundary_backspace	nihao	ni'|hao	2	backspace	nhao	1	nihao
+logical_separator_repeated_backspace	nihao	ni'|hao	2	backspace,backspace	hao	0	nihao
 user_separator_before_boundary	man'gao	man|'gao	3	none	man'gao	3
 user_separator_after_boundary	man'gao	man'|gao	4	none	man'gao	4
 user_separator_before_boundary_backspace	man'gao	man|'gao	3	backspace	ma'gao	2	mangao
