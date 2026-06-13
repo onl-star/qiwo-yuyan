@@ -94,6 +94,16 @@ grep -q '"qiwoIme_crash_log${TimeUtils.iso8601UTCDateTime(exportTimestamp)}.zip"
   exit 1
 }
 
+grep -q 'CustomConstant.QIWO_IME_REPO' "$about_fragment_file" || {
+  echo "About page repository links must use QIWO_IME_REPO" >&2
+  exit 1
+}
+
+if grep -q 'CustomConstant.YUYAN_IME_REPO' "$about_fragment_file"; then
+  echo "About page repository links must not reference removed YUYAN_IME_REPO" >&2
+  exit 1
+fi
+
 if grep -q 'yuyanIme_' "$other_settings_file" "$about_fragment_file"; then
   echo "Export file names must not use yuyanIme_ prefix" >&2
   exit 1
