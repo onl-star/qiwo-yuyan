@@ -69,6 +69,9 @@ jobs:
           fi
           echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}" >> "${GITHUB_ENV}"
 
+      - name: Install native build tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ninja-build curl unzip
+
       - name: Build qiwo-android-rime-core JNI libraries
         working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
         run: scripts/build-android.sh
@@ -132,7 +135,7 @@ jobs:
       - name: Upload Debug APK
         uses: actions/upload-artifact@v7
         with:
-          name: qiwo-debug-apk-rime-core-wrapper
+          name: qiwo-debug-apk-rime-frost-core
           path: app/build/outputs/apk/offline/debug/*.apk
           retention-days: 7
 
@@ -193,6 +196,9 @@ jobs:
             ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/${NDK_VERSION}"
           fi
           echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}" >> "${GITHUB_ENV}"
+
+      - name: Install native build tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ninja-build curl unzip
 
       - name: Build qiwo-android-rime-core JNI libraries
         working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
@@ -261,10 +267,13 @@ jobs:
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
+      - name: Verify Release APK Rime Core Contents
+        run: bash tests/verify_android_rime_core_apk_artifact.sh app/build/outputs/apk/offline/release/*.apk
+
       - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: qiwo-release-apk-rime-core-wrapper
+          name: qiwo-release-apk-rime-frost-core
           path: app/build/outputs/apk/offline/release/*.apk
           retention-days: 7
 
