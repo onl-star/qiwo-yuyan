@@ -58,7 +58,9 @@ object RimeEngine {
         clearPinyinSegmentation()
         keyRecordStack.clear()
         charCase = MASK_CASE_LOWER
-        Rime.startup(Launcher.instance.context, fullCheck)
+        if (!Rime.startup(Launcher.instance.context, fullCheck)) {
+            return false
+        }
         return Rime.selectSchema(mod)
     }
 

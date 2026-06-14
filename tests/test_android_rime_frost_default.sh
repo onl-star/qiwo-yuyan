@@ -55,10 +55,11 @@ awk '
     if ($0 !~ /true\)/) exit 2
   }
   /writeDefaultCustom\(\)/ && write_custom == 0 { write_custom = NR }
+  /Kernel\.resetIme\(requiresFullRimeCheck\)/ && reset_ime == 0 { reset_ime = NR }
   /setValue\(CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM\)/ { set_version = NR }
-  END { exit frost_copy > 0 && write_custom > frost_copy && set_version > write_custom ? 0 : 1 }
+  END { exit frost_copy > 0 && write_custom > frost_copy && reset_ime > write_custom && set_version > reset_ime ? 0 : 1 }
 ' "$launcher_file" || {
-  echo "Launcher must overwrite packaged frost assets and write default.custom.yaml before marking migration complete" >&2
+  echo "Launcher must overwrite packaged frost assets, reset Rime, then mark migration complete" >&2
   exit 1
 }
 
@@ -72,17 +73,22 @@ grep -q 'requiresFullRimeCheck' "$launcher_file" || {
   exit 1
 }
 
-grep -q 'Kernel.resetIme(requiresFullRimeCheck)' "$launcher_file" || {
+grep -q 'val rimeReady = Kernel.resetIme(requiresFullRimeCheck)' "$launcher_file" || {
   echo "Launcher must run full Rime deployment check after copying upgraded frost assets" >&2
   exit 1
 }
 
-grep -q 'fun resetIme(fullCheck: Boolean = false)' "$kernel_file" || {
+grep -q 'requiresFullRimeCheck && rimeReady' "$launcher_file" || {
+  echo "Launcher must not mark Rime resources migrated until startup succeeds" >&2
+  exit 1
+}
+
+grep -q 'fun resetIme(fullCheck: Boolean = false): Boolean' "$kernel_file" || {
   echo "Kernel resetIme must accept a full-check flag for Rime deployment" >&2
   exit 1
 }
 
-grep -q 'fun initImeSchema(schema: String, fullCheck: Boolean = false)' "$kernel_file" || {
+grep -q 'fun initImeSchema(schema: String, fullCheck: Boolean = false): Boolean' "$kernel_file" || {
   echo "Kernel initImeSchema must pass full-check through to RimeEngine" >&2
   exit 1
 }

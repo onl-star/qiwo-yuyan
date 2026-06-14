@@ -53,6 +53,16 @@ grep -q 'loaded JNI library yuyanime' "$rime_file" || {
   exit 1
 }
 
+grep -q 'startupRime failed fullCheck=' "$rime_file" || {
+  echo "Rime.kt must log native startup failures without crashing the app" >&2
+  exit 1
+}
+
+grep -q 'catch (error: RuntimeException)' "$rime_file" || {
+  echo "Rime.kt must catch recoverable native startup RuntimeException failures" >&2
+  exit 1
+}
+
 grep -q 'direct composition caret JNI' "$rime_file" || {
   echo "Rime.kt must log direct caret JNI availability for device diagnosis" >&2
   exit 1

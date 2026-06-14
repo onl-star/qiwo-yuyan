@@ -52,9 +52,11 @@ class Launcher {
                 copyFileOrDir(context, "rime_frost", "", CustomConstant.RIME_DICT_PATH, true)
                 // 写入 default.custom.yaml
                 writeDefaultCustom()
+            }
+            val rimeReady = Kernel.resetIme(requiresFullRimeCheck)  // 解决词库复制慢，导致先调用初始化问题
+            if (requiresFullRimeCheck && rimeReady) {
                 AppPrefs.getInstance().internal.dataDictVersion.setValue(CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM)
             }
-            Kernel.resetIme(requiresFullRimeCheck)  // 解决词库复制慢，导致先调用初始化问题
             YuyanEmojiCompat.init(context)
             //初始化键盘主题
             val isFollowSystemDayNight = prefs.followSystemDayNightTheme.getValue()

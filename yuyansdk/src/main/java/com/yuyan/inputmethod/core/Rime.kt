@@ -36,10 +36,18 @@ class Rime(fullCheck: Boolean) {
             }
         }
 
-        fun startup(context: Context, fullCheck: Boolean) {
-            Log.i(TAG, "startupRime sharedDir=${CustomConstant.RIME_DICT_PATH} userDir=${CustomConstant.RIME_DICT_PATH} fullCheck=$fullCheck")
-            startupRime(context, CustomConstant.RIME_DICT_PATH, CustomConstant.RIME_DICT_PATH, fullCheck)
-            updateStatus()
+        fun startup(context: Context, fullCheck: Boolean): Boolean {
+            return try {
+                Log.i(TAG, "startupRime sharedDir=${CustomConstant.RIME_DICT_PATH} userDir=${CustomConstant.RIME_DICT_PATH} fullCheck=$fullCheck")
+                startupRime(context, CustomConstant.RIME_DICT_PATH, CustomConstant.RIME_DICT_PATH, fullCheck)
+                updateStatus()
+                true
+            } catch (error: RuntimeException) {
+                Log.e(TAG, "startupRime failed fullCheck=$fullCheck", error)
+                mContext = RimeContext()
+                mStatus = RimeStatus()
+                false
+            }
         }
 
         @JvmStatic
