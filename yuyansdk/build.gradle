@@ -6,8 +6,8 @@ plugins {
     id 'kotlin-parcelize'
     id 'kotlinx-serialization'
 }
-static def versionNameDate() {
-    return new Date().format("yyyyMMdd.HH", TimeZone.getTimeZone("GMT+8"))
+static def qiwoVersionName() {
+    return "0.0.1"
 }
 
 static def getAppGitHead() {
@@ -192,7 +192,7 @@ android {
             abortOnError false
         }
 
-        buildConfigField "String", "versionName", "\"${versionNameDate()}\""
+        buildConfigField "String", "versionName", "\"${qiwoVersionName()}\""
         buildConfigField "String", "AppCommitHead", "\"${getAppGitHead()}\""
         buildConfigField "String", "AppBuildTime", "\"${getAppBuildTime()}\""
     }
@@ -284,7 +284,7 @@ tasks.register('makeaar', Copy) {
     from('build/outputs/aar/')
     into('build/outputs/aar/')
     include('imeModule-dev-debug.aar')
-    rename('imeModule-dev-debug.aar', 'imesdk_' + versionNameDate() + '.aar')
+    rename('imeModule-dev-debug.aar', 'imesdk_' + qiwoVersionName() + '.aar')
 }
 
 makeaar.dependsOn(build)

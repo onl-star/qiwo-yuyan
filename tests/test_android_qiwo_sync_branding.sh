@@ -116,12 +116,12 @@ if grep -q 'yuyanIme_' "$other_settings_file" "$about_fragment_file"; then
   exit 1
 fi
 
-grep -q 'qiwo-debug-apk-rime-core-wrapper' "$workflow_file" || {
+grep -q 'qiwo-debug-apk-rime-frost-core' "$workflow_file" || {
   echo "Debug CI artifact name must use Qiwo naming" >&2
   exit 1
 }
 
-grep -q 'qiwo-release-apk-rime-core-wrapper' "$workflow_file" || {
+grep -q 'qiwo-release-apk-rime-frost-core' "$workflow_file" || {
   echo "Release CI artifact name must use Qiwo naming" >&2
   exit 1
 }

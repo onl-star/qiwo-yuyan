@@ -10,8 +10,8 @@ android {
         applicationId "com.qiwo.inputmethod"
         minSdk 23
         targetSdk 36
-        versionCode Integer.valueOf(versionCodeDate())
-        versionName versionNameDate()
+        versionCode qiwoVersionCode()
+        versionName qiwoVersionName()
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         ndk {
@@ -95,17 +95,17 @@ android {
     }
     android.applicationVariants.configureEach { variant ->
         variant.outputs.configureEach {
-            outputFileName = "qiwoIme_${versionCodeDate()}_${variant.buildType.name}.apk"
+            outputFileName = "qiwoIme_${qiwoVersionName()}_${variant.buildType.name}.apk"
         }
     }
 }
 
-static def versionCodeDate() {
-    return new Date().format("yyyyMMddHH", TimeZone.getTimeZone("GMT+8"))
+static def qiwoVersionCode() {
+    return 1
 }
 
-static def versionNameDate() {
-    return new Date().format("yyyyMMdd.HH", TimeZone.getTimeZone("GMT+8"))
+static def qiwoVersionName() {
+    return "0.0.1"
 }
 
 dependencies {

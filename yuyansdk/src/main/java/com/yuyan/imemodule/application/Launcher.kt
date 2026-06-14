@@ -2,6 +2,7 @@ package com.yuyan.imemodule.application
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.preference.PreferenceManager
 import com.yuyan.imemodule.data.emojicon.YuyanEmojiCompat
@@ -13,8 +14,10 @@ import com.yuyan.imemodule.service.ClipboardHelper
 import com.yuyan.imemodule.utils.AssetUtils.copyFileOrDir
 import com.yuyan.imemodule.utils.thread.ThreadPoolUtils
 import com.yuyan.inputmethod.core.Kernel
+import java.io.File
 
 class Launcher {
+    private val tag = "QiwoLauncher"
     lateinit var context: Context
         private set
 
@@ -37,25 +40,14 @@ class Launcher {
     private fun onInitDataChildThread() {
         ThreadPoolUtils.executeSingleton {
             // 复制词库文件
-            val dataDictVersion = AppPrefs.getInstance().internal.dataDictVersion.getValue()
-            val requiresFullRimeCheck = dataDictVersion < CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM
+            val rimeDataVersion = AppPrefs.getInstance().internal.rimeDictDataVersion.getValue()
+            val requiresFullRimeCheck = rimeDataVersion != CustomConstant.CURRENT_RIME_DICT_DATA_VERSION
             if (requiresFullRimeCheck) {
-                // 清理旧版残留：删除 rime_frost 遗留的 root default.yaml
-                val oldDefault = java.io.File(CustomConstant.RIME_DICT_PATH, "default.yaml")
-                if (oldDefault.exists() && !oldDefault.delete()) {
-                    android.util.Log.w("QiwoLauncher", "Failed to delete stale root default.yaml")
-                }
-                //rime词库（含 build/ 预编译 schema）
-                copyFileOrDir(context, "rime", "", CustomConstant.RIME_DICT_PATH, true)
-                copyFileOrDir(context, "hw", "", CustomConstant.HW_DICT_PATH, true)
-                // rime-frost 白霜拼音方案。升级 full Rime 后需要覆盖旧版方案文件，用户词库不在这里。
-                copyFileOrDir(context, "rime_frost", "", CustomConstant.RIME_DICT_PATH, true)
-                // 写入 default.custom.yaml
-                writeDefaultCustom()
+                refreshPackagedRimeResources("version $rimeDataVersion -> ${CustomConstant.CURRENT_RIME_DICT_DATA_VERSION}")
             }
             val rimeReady = Kernel.resetIme(requiresFullRimeCheck)  // 解决词库复制慢，导致先调用初始化问题
             if (requiresFullRimeCheck && rimeReady) {
-                AppPrefs.getInstance().internal.dataDictVersion.setValue(CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM)
+                AppPrefs.getInstance().internal.rimeDictDataVersion.setValue(CustomConstant.CURRENT_RIME_DICT_DATA_VERSION)
             }
             YuyanEmojiCompat.init(context)
             //初始化键盘主题
@@ -63,6 +55,45 @@ class Launcher {
             if (isFollowSystemDayNight) {
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
             }
+        }
+    }
+
+    fun recoverRimeResourcesAfterStartupFailure(): Boolean {
+        return try {
+            refreshPackagedRimeResources("startup recovery")
+            true
+        } catch (error: Exception) {
+            Log.e(tag, "Failed to recover packaged Rime resources", error)
+            false
+        }
+    }
+
+    private fun refreshPackagedRimeResources(reason: String) {
+        Log.i(tag, "Refreshing packaged Rime resources: $reason")
+        cleanGeneratedRimeResidues()
+        // rime词库（含 build/ 预编译 schema）
+        copyFileOrDir(context, "rime", "", CustomConstant.RIME_DICT_PATH, true)
+        copyFileOrDir(context, "hw", "", CustomConstant.HW_DICT_PATH, true)
+        // rime-frost 白霜拼音方案。升级 full Rime 后需要覆盖旧版方案文件，用户词库不在这里。
+        copyFileOrDir(context, "rime_frost", "", CustomConstant.RIME_DICT_PATH, true)
+        // 写入 default.custom.yaml
+        writeDefaultCustom()
+    }
+
+    private fun cleanGeneratedRimeResidues() {
+        deleteIfExists(File(CustomConstant.RIME_DICT_PATH, "build"))
+        deleteIfExists(File(CustomConstant.RIME_DICT_PATH, "default.yaml"))
+    }
+
+    private fun deleteIfExists(file: File) {
+        if (!file.exists()) return
+        val deleted = if (file.isDirectory) {
+            file.deleteRecursively()
+        } else {
+            file.delete()
+        }
+        if (!deleted) {
+            Log.w(tag, "Failed to delete stale Rime file: ${file.absolutePath}")
         }
     }
 
@@ -88,7 +119,7 @@ patch:
     - schema: english
   "menu/page_size": 8
 """.trimIndent()
-        val customFile = java.io.File(CustomConstant.RIME_DICT_PATH, "default.custom.yaml")
+        val customFile = File(CustomConstant.RIME_DICT_PATH, "default.custom.yaml")
         try {
             customFile.writeText(customYaml)
         } catch (e: Exception) {

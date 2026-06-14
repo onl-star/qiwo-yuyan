@@ -59,7 +59,18 @@ object RimeEngine {
         keyRecordStack.clear()
         charCase = MASK_CASE_LOWER
         if (!Rime.startup(Launcher.instance.context, fullCheck)) {
-            return false
+            Log.w(TAG, "Rime startup failed for schema=$mod; refreshing resources and retrying")
+            try {
+                Rime.destroy()
+            } catch (error: RuntimeException) {
+                Log.w(TAG, "Rime destroy failed before startup retry", error)
+            }
+            if (!Launcher.instance.recoverRimeResourcesAfterStartupFailure()) {
+                return false
+            }
+            if (!Rime.startup(Launcher.instance.context, true)) {
+                return false
+            }
         }
         return Rime.selectSchema(mod)
     }

@@ -301,6 +301,26 @@ grep -q 'outputFileName = "qiwoIme_' "$app_gradle_file" || {
   exit 1
 }
 
+grep -q 'versionCode qiwoVersionCode()' "$app_gradle_file" || {
+  echo "Android app versionCode must use the controlled qiwoVersionCode helper" >&2
+  exit 1
+}
+
+grep -q 'versionName qiwoVersionName()' "$app_gradle_file" || {
+  echo "Android app versionName must use the controlled qiwoVersionName helper" >&2
+  exit 1
+}
+
+grep -q 'return "0.0.1"' "$app_gradle_file" || {
+  echo "Android app versionName must start from 0.0.1" >&2
+  exit 1
+}
+
+if grep -q 'versionCodeDate\|versionNameDate\|yyyyMMdd' "$app_gradle_file" "$gradle_file"; then
+  echo "Android build versions must not be derived from timestamps" >&2
+  exit 1
+fi
+
 if grep -q 'outputFileName = "yuyanIme_' "$app_gradle_file"; then
   echo "Android final APK file name must not use yuyanIme_ prefix" >&2
   exit 1

@@ -33,11 +33,15 @@ grep -q 'SCHEMA_FROST = "rime_frost"' "$constant_file" || {
   exit 1
 }
 
-rime_dict_version="$(sed -nE 's/.*CURRENT_RIME_DICT_DATA_VERSIOM = ([0-9]+).*/\1/p' "$constant_file")"
-if [[ -z "$rime_dict_version" || "$rime_dict_version" -le 2026061303 ]]; then
-  echo "Full frost migration must bump CURRENT_RIME_DICT_DATA_VERSIOM above stale prebuilt-cache builds" >&2
+grep -q 'CURRENT_RIME_DICT_DATA_VERSION = "0.0.1"' "$constant_file" || {
+  echo "Full frost migration must use semantic Rime data version 0.0.1" >&2
   exit 1
-fi
+}
+
+grep -q 'rimeDictDataVersion = string("rime_dict_data_semver", "")' "$prefs_file" || {
+  echo "Rime data migration marker must use a semantic-version string preference" >&2
+  exit 1
+}
 
 if grep -q 'SCHEMA_FROST_FULL\|rime_frost_android\|stableSchemaForLegacyRime\|isUnsupportedFrostSchema' "$constant_file"; then
   echo "CustomConstant must not keep Android-only frost aliases or legacy fallback helpers" >&2
@@ -55,18 +59,36 @@ awk '
     if ($0 !~ /true\)/) exit 2
   }
   /writeDefaultCustom\(\)/ && write_custom == 0 { write_custom = NR }
-  /Kernel\.resetIme\(requiresFullRimeCheck\)/ && reset_ime == 0 { reset_ime = NR }
-  /setValue\(CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM\)/ { set_version = NR }
-  END { exit frost_copy > 0 && write_custom > frost_copy && reset_ime > write_custom && set_version > reset_ime ? 0 : 1 }
+  END { exit frost_copy > 0 && write_custom > frost_copy ? 0 : 1 }
 ' "$launcher_file" || {
-  echo "Launcher must overwrite packaged frost assets, reset Rime, then mark migration complete" >&2
+  echo "Launcher must overwrite packaged frost assets before writing default.custom.yaml" >&2
   exit 1
 }
 
-if grep -q 'clearRimeBuildCache\|deleteRecursively()' "$launcher_file"; then
-  echo "Launcher must preserve packaged prebuilt Rime build artifacts for legacy pinyin schemas" >&2
+awk '
+  /refreshPackagedRimeResources\("version/ && refresh == 0 { refresh = NR }
+  /Kernel\.resetIme\(requiresFullRimeCheck\)/ && reset_ime == 0 { reset_ime = NR }
+  /setValue\(CustomConstant.CURRENT_RIME_DICT_DATA_VERSION\)/ { set_version = NR }
+  END { exit refresh > 0 && reset_ime > refresh && set_version > reset_ime ? 0 : 1 }
+' "$launcher_file" || {
+  echo "Launcher must refresh Rime resources, reset Rime, then mark migration complete" >&2
   exit 1
-fi
+}
+
+grep -q 'deleteIfExists(File(CustomConstant.RIME_DICT_PATH, "build"))' "$launcher_file" || {
+  echo "Launcher must delete stale generated Rime build artifacts before copying packaged resources" >&2
+  exit 1
+}
+
+grep -q 'deleteIfExists(File(CustomConstant.RIME_DICT_PATH, "default.yaml"))' "$launcher_file" || {
+  echo "Launcher must delete stale root default.yaml before copying packaged resources" >&2
+  exit 1
+}
+
+grep -q 'recoverRimeResourcesAfterStartupFailure' "$launcher_file" || {
+  echo "Launcher must expose startup-failure Rime resource recovery" >&2
+  exit 1
+}
 
 grep -q 'requiresFullRimeCheck' "$launcher_file" || {
   echo "Launcher must detect dictionary migrations that require a full Rime deployment check" >&2
@@ -80,6 +102,11 @@ grep -q 'val rimeReady = Kernel.resetIme(requiresFullRimeCheck)' "$launcher_file
 
 grep -q 'requiresFullRimeCheck && rimeReady' "$launcher_file" || {
   echo "Launcher must not mark Rime resources migrated until startup succeeds" >&2
+  exit 1
+}
+
+grep -q 'Rime startup failed for schema=.*refreshing resources and retrying' "$rime_engine_file" || {
+  echo "RimeEngine must refresh packaged Rime resources and retry after startup failure" >&2
   exit 1
 }
 
