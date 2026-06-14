@@ -38,7 +38,8 @@ class Launcher {
         ThreadPoolUtils.executeSingleton {
             // 复制词库文件
             val dataDictVersion = AppPrefs.getInstance().internal.dataDictVersion.getValue()
-            if (dataDictVersion < CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM) {
+            val requiresFullRimeCheck = dataDictVersion < CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM
+            if (requiresFullRimeCheck) {
                 // 清理旧版残留：删除 rime_frost 遗留的 root default.yaml
                 val oldDefault = java.io.File(CustomConstant.RIME_DICT_PATH, "default.yaml")
                 if (oldDefault.exists() && !oldDefault.delete()) {
@@ -51,10 +52,9 @@ class Launcher {
                 copyFileOrDir(context, "rime_frost", "", CustomConstant.RIME_DICT_PATH, true)
                 // 写入 default.custom.yaml
                 writeDefaultCustom()
-                clearRimeBuildCache()
                 AppPrefs.getInstance().internal.dataDictVersion.setValue(CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM)
             }
-            Kernel.resetIme()  // 解决词库复制慢，导致先调用初始化问题
+            Kernel.resetIme(requiresFullRimeCheck)  // 解决词库复制慢，导致先调用初始化问题
             YuyanEmojiCompat.init(context)
             //初始化键盘主题
             val isFollowSystemDayNight = prefs.followSystemDayNightTheme.getValue()
@@ -91,13 +91,6 @@ patch:
             customFile.writeText(customYaml)
         } catch (e: Exception) {
             e.printStackTrace()
-        }
-    }
-
-    private fun clearRimeBuildCache() {
-        val buildDir = java.io.File(CustomConstant.RIME_DICT_PATH, "build")
-        if (buildDir.exists() && !buildDir.deleteRecursively()) {
-            android.util.Log.w("QiwoLauncher", "Failed to delete stale Rime build directory")
         }
     }
 

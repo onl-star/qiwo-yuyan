@@ -53,12 +53,12 @@ object RimeEngine {
         Rime.getInstance(false)
     }
 
-    fun selectSchema(mod: String): Boolean {
+    fun selectSchema(mod: String, fullCheck: Boolean = false): Boolean {
         clearCompositionCaret()
         clearPinyinSegmentation()
         keyRecordStack.clear()
         charCase = MASK_CASE_LOWER
-        Rime.startup(Launcher.instance.context, false)
+        Rime.startup(Launcher.instance.context, fullCheck)
         return Rime.selectSchema(mod)
     }
 

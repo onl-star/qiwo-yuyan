@@ -12,8 +12,8 @@ object Kernel {
 
     // 初始化输入法
     @Synchronized
-    fun initImeSchema(schema: String) {
-        val selected = RimeEngine.selectSchema(schema)
+    fun initImeSchema(schema: String, fullCheck: Boolean = false) {
+        val selected = RimeEngine.selectSchema(schema, fullCheck)
         if (!selected) {
             Log.w(TAG, "selectSchema failed for $schema")
         }
@@ -129,9 +129,9 @@ object Kernel {
     }
 
     // 释放内存
-    fun resetIme() {
+    fun resetIme(fullCheck: Boolean = false) {
         RimeEngine.destroy()
-        initImeSchema(AppPrefs.getInstance().internal.pinyinModeRime.getValue())
+        initImeSchema(AppPrefs.getInstance().internal.pinyinModeRime.getValue(), fullCheck)
     }
 
     // 根据输入的字符查询候选词

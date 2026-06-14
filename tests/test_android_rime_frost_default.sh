@@ -55,21 +55,40 @@ awk '
     if ($0 !~ /true\)/) exit 2
   }
   /writeDefaultCustom\(\)/ && write_custom == 0 { write_custom = NR }
-  /clearRimeBuildCache\(\)/ && clear_build == 0 { clear_build = NR }
   /setValue\(CustomConstant.CURRENT_RIME_DICT_DATA_VERSIOM\)/ { set_version = NR }
-  END { exit frost_copy > 0 && write_custom > frost_copy && clear_build > write_custom && set_version > clear_build ? 0 : 1 }
+  END { exit frost_copy > 0 && write_custom > frost_copy && set_version > write_custom ? 0 : 1 }
 ' "$launcher_file" || {
-  echo "Launcher must overwrite packaged frost assets and clear stale Rime build cache before marking migration complete" >&2
+  echo "Launcher must overwrite packaged frost assets and write default.custom.yaml before marking migration complete" >&2
   exit 1
 }
 
-grep -q 'java.io.File(CustomConstant.RIME_DICT_PATH, "build")' "$launcher_file" || {
-  echo "Launcher must target the Rime build cache directory for full-Rime migration cleanup" >&2
+if grep -q 'clearRimeBuildCache\|deleteRecursively()' "$launcher_file"; then
+  echo "Launcher must preserve packaged prebuilt Rime build artifacts for legacy pinyin schemas" >&2
+  exit 1
+fi
+
+grep -q 'requiresFullRimeCheck' "$launcher_file" || {
+  echo "Launcher must detect dictionary migrations that require a full Rime deployment check" >&2
   exit 1
 }
 
-grep -q 'deleteRecursively()' "$launcher_file" || {
-  echo "Launcher must recursively delete stale Rime build artifacts before full-Rime startup" >&2
+grep -q 'Kernel.resetIme(requiresFullRimeCheck)' "$launcher_file" || {
+  echo "Launcher must run full Rime deployment check after copying upgraded frost assets" >&2
+  exit 1
+}
+
+grep -q 'fun resetIme(fullCheck: Boolean = false)' "$kernel_file" || {
+  echo "Kernel resetIme must accept a full-check flag for Rime deployment" >&2
+  exit 1
+}
+
+grep -q 'fun initImeSchema(schema: String, fullCheck: Boolean = false)' "$kernel_file" || {
+  echo "Kernel initImeSchema must pass full-check through to RimeEngine" >&2
+  exit 1
+}
+
+grep -q 'fun selectSchema(mod: String, fullCheck: Boolean = false)' "$rime_engine_file" || {
+  echo "RimeEngine selectSchema must accept a full-check flag for source-owned Rime" >&2
   exit 1
 }
 
