@@ -21,6 +21,7 @@ jobs:
       QIWO_INPUT_FORMAT_CORE_DIR: qiwo-input-format-core
       QIWO_ANDROID_RIME_CORE_DIR: qiwo-android-rime-core
       QIWO_ANDROID_RIME_CORE_PACKAGE: "true"
+      QIWO_ANDROID_NDK_VERSION: "26.3.11579264"
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -56,7 +57,6 @@ jobs:
       - name: Configure Android SDK
         run: |
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
-          NDK_VERSION="26.3.11579264"
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
           "${SDKMANAGER}" "platform-tools" "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1"
           if [ -n "${ANDROID_NDK_HOME:-}" ] && [ -d "${ANDROID_NDK_HOME}" ]; then
@@ -65,15 +65,23 @@ jobs:
             ANDROID_NDK_HOME="${ANDROID_NDK_LATEST_HOME}"
             echo "Using latest preinstalled NDK: ${ANDROID_NDK_HOME}"
           else
-            "${SDKMANAGER}" "ndk;${NDK_VERSION}"
-            ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/${NDK_VERSION}"
+            "${SDKMANAGER}" "ndk;${QIWO_ANDROID_NDK_VERSION}"
+            ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/${QIWO_ANDROID_NDK_VERSION}"
           fi
           echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}" >> "${GITHUB_ENV}"
 
       - name: Install native build tools
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ninja-build curl unzip
 
+      - name: Cache qiwo-android-rime-core JNI libraries
+        id: cache-android-rime-core
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}/target/android-jniLibs
+          key: qiwo-android-rime-core-${{ runner.os }}-ndk-${{ env.QIWO_ANDROID_NDK_VERSION }}-${{ hashFiles('.github/workflows/build.yml', 'qiwo-android-rime-core/CMakeLists.txt', 'qiwo-android-rime-core/cmake/**', 'qiwo-android-rime-core/jni/**', 'qiwo-android-rime-core/patches/**', 'qiwo-android-rime-core/scripts/**') }}
+
       - name: Build qiwo-android-rime-core JNI libraries
+        if: steps.cache-android-rime-core.outputs.cache-hit != 'true'
         working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
         run: scripts/build-android.sh
 
@@ -85,7 +93,22 @@ jobs:
         working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
         run: scripts/verify-symbols.sh target/android-jniLibs/arm64-v8a/libyuyanime.so
 
+      - name: Cache qiwo-input-format-core JNI build
+        id: cache-input-format-core
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.QIWO_INPUT_FORMAT_CORE_DIR }}/target
+          key: qiwo-input-format-core-${{ runner.os }}-ndk-${{ env.QIWO_ANDROID_NDK_VERSION }}-${{ hashFiles('.github/workflows/build.yml', 'qiwo-input-format-core/**/Cargo.lock', 'qiwo-input-format-core/**/Cargo.toml', 'qiwo-input-format-core/**/*.rs') }}
+
+      - name: Cache qiwo-sync-core JNI build
+        id: cache-sync-core
+        uses: actions/cache@v4
+        with:
+          path: qiwo-sync-core/target
+          key: qiwo-sync-core-${{ runner.os }}-ndk-${{ env.QIWO_ANDROID_NDK_VERSION }}-${{ hashFiles('.github/workflows/build.yml', 'qiwo-sync-core/**/Cargo.lock', 'qiwo-sync-core/**/Cargo.toml', 'qiwo-sync-core/**/*.rs') }}
+
       - name: Setup Rust
+        if: steps.cache-input-format-core.outputs.cache-hit != 'true' || steps.cache-sync-core.outputs.cache-hit != 'true'
         run: |
           rustup toolchain install stable --profile minimal
           rustup target add \
@@ -95,6 +118,7 @@ jobs:
             x86_64-linux-android
 
       - name: Build qiwo-input-format-core JNI libraries
+        if: steps.cache-input-format-core.outputs.cache-hit != 'true'
         run: |
           NDK_TOOLCHAIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${NDK_TOOLCHAIN}/aarch64-linux-android23-clang"
@@ -114,6 +138,7 @@ jobs:
           done
 
       - name: Build qiwo-sync-core JNI library
+        if: steps.cache-sync-core.outputs.cache-hit != 'true'
         run: |
           NDK_TOOLCHAIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${NDK_TOOLCHAIN}/aarch64-linux-android23-clang"
@@ -121,6 +146,9 @@ jobs:
           export AR_aarch64_linux_android="${NDK_TOOLCHAIN}/llvm-ar"
           test -x "${CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER}"
           cargo build --manifest-path qiwo-sync-core/Cargo.toml --release -p qiwo-sync --target aarch64-linux-android
+
+      - name: Copy qiwo-sync-core JNI library
+        run: |
           mkdir -p yuyansdk/src/main/jniLibs/arm64-v8a
           cp qiwo-sync-core/target/aarch64-linux-android/release/libqiwo_sync.so yuyansdk/src/main/jniLibs/arm64-v8a/
 
@@ -150,6 +178,7 @@ jobs:
       QIWO_INPUT_FORMAT_CORE_DIR: qiwo-input-format-core
       QIWO_ANDROID_RIME_CORE_DIR: qiwo-android-rime-core
       QIWO_ANDROID_RIME_CORE_PACKAGE: "true"
+      QIWO_ANDROID_NDK_VERSION: "26.3.11579264"
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -185,7 +214,6 @@ jobs:
       - name: Configure Android SDK
         run: |
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
-          NDK_VERSION="26.3.11579264"
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
           "${SDKMANAGER}" "platform-tools" "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1"
           if [ -n "${ANDROID_NDK_HOME:-}" ] && [ -d "${ANDROID_NDK_HOME}" ]; then
@@ -194,15 +222,23 @@ jobs:
             ANDROID_NDK_HOME="${ANDROID_NDK_LATEST_HOME}"
             echo "Using latest preinstalled NDK: ${ANDROID_NDK_HOME}"
           else
-            "${SDKMANAGER}" "ndk;${NDK_VERSION}"
-            ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/${NDK_VERSION}"
+            "${SDKMANAGER}" "ndk;${QIWO_ANDROID_NDK_VERSION}"
+            ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/${QIWO_ANDROID_NDK_VERSION}"
           fi
           echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}" >> "${GITHUB_ENV}"
 
       - name: Install native build tools
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ninja-build curl unzip
 
+      - name: Cache qiwo-android-rime-core JNI libraries
+        id: cache-android-rime-core
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}/target/android-jniLibs
+          key: qiwo-android-rime-core-${{ runner.os }}-ndk-${{ env.QIWO_ANDROID_NDK_VERSION }}-${{ hashFiles('.github/workflows/build.yml', 'qiwo-android-rime-core/CMakeLists.txt', 'qiwo-android-rime-core/cmake/**', 'qiwo-android-rime-core/jni/**', 'qiwo-android-rime-core/patches/**', 'qiwo-android-rime-core/scripts/**') }}
+
       - name: Build qiwo-android-rime-core JNI libraries
+        if: steps.cache-android-rime-core.outputs.cache-hit != 'true'
         working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
         run: scripts/build-android.sh
 
@@ -214,7 +250,22 @@ jobs:
         working-directory: ${{ env.QIWO_ANDROID_RIME_CORE_DIR }}
         run: scripts/verify-symbols.sh target/android-jniLibs/arm64-v8a/libyuyanime.so
 
+      - name: Cache qiwo-input-format-core JNI build
+        id: cache-input-format-core
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.QIWO_INPUT_FORMAT_CORE_DIR }}/target
+          key: qiwo-input-format-core-${{ runner.os }}-ndk-${{ env.QIWO_ANDROID_NDK_VERSION }}-${{ hashFiles('.github/workflows/build.yml', 'qiwo-input-format-core/**/Cargo.lock', 'qiwo-input-format-core/**/Cargo.toml', 'qiwo-input-format-core/**/*.rs') }}
+
+      - name: Cache qiwo-sync-core JNI build
+        id: cache-sync-core
+        uses: actions/cache@v4
+        with:
+          path: qiwo-sync-core/target
+          key: qiwo-sync-core-${{ runner.os }}-ndk-${{ env.QIWO_ANDROID_NDK_VERSION }}-${{ hashFiles('.github/workflows/build.yml', 'qiwo-sync-core/**/Cargo.lock', 'qiwo-sync-core/**/Cargo.toml', 'qiwo-sync-core/**/*.rs') }}
+
       - name: Setup Rust
+        if: steps.cache-input-format-core.outputs.cache-hit != 'true' || steps.cache-sync-core.outputs.cache-hit != 'true'
         run: |
           rustup toolchain install stable --profile minimal
           rustup target add \
@@ -224,6 +275,7 @@ jobs:
             x86_64-linux-android
 
       - name: Build qiwo-input-format-core JNI libraries
+        if: steps.cache-input-format-core.outputs.cache-hit != 'true'
         run: |
           NDK_TOOLCHAIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${NDK_TOOLCHAIN}/aarch64-linux-android23-clang"
@@ -243,6 +295,7 @@ jobs:
           done
 
       - name: Build qiwo-sync-core JNI library
+        if: steps.cache-sync-core.outputs.cache-hit != 'true'
         run: |
           NDK_TOOLCHAIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${NDK_TOOLCHAIN}/aarch64-linux-android23-clang"
@@ -250,6 +303,9 @@ jobs:
           export AR_aarch64_linux_android="${NDK_TOOLCHAIN}/llvm-ar"
           test -x "${CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER}"
           cargo build --manifest-path qiwo-sync-core/Cargo.toml --release -p qiwo-sync --target aarch64-linux-android
+
+      - name: Copy qiwo-sync-core JNI library
+        run: |
           mkdir -p yuyansdk/src/main/jniLibs/arm64-v8a
           cp qiwo-sync-core/target/aarch64-linux-android/release/libqiwo_sync.so yuyansdk/src/main/jniLibs/arm64-v8a/
 

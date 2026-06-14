@@ -147,6 +147,11 @@ grep -q 'QIWO_ANDROID_RIME_CORE_DIR' "$workflow_file" || {
   exit 1
 }
 
+grep -q 'QIWO_ANDROID_NDK_VERSION: "26.3.11579264"' "$workflow_file" || {
+  echo "Android CI must keep the Android NDK version in a cache-keyed env var" >&2
+  exit 1
+}
+
 grep -q 'ref: \${{ github.ref_name }}' "$workflow_file" || {
   echo "Android CI must checkout the matching qiwo-sync-core branch for cross-repo feature builds" >&2
   exit 1
@@ -187,6 +192,21 @@ grep -q 'Build qiwo-android-rime-core JNI libraries' "$workflow_file" || {
   exit 1
 }
 
+grep -q 'Cache qiwo-android-rime-core JNI libraries' "$workflow_file" || {
+  echo "Android CI must cache qiwo-android-rime-core JNI libraries" >&2
+  exit 1
+}
+
+grep -q 'id: cache-android-rime-core' "$workflow_file" || {
+  echo "Android CI must expose qiwo-android-rime-core cache-hit state" >&2
+  exit 1
+}
+
+grep -q "if: steps.cache-android-rime-core.outputs.cache-hit != 'true'" "$workflow_file" || {
+  echo "Android CI must skip qiwo-android-rime-core JNI build on exact cache hit" >&2
+  exit 1
+}
+
 grep -q 'Verify qiwo-android-rime-core JNI artifacts' "$workflow_file" || {
   echo "Android CI must verify qiwo-android-rime-core JNI artifacts before Gradle" >&2
   exit 1
@@ -204,6 +224,40 @@ grep -q 'scripts/verify-artifacts.sh target/android-jniLibs' "$workflow_file" ||
 
 grep -q 'scripts/verify-symbols.sh target/android-jniLibs/arm64-v8a/libyuyanime.so' "$workflow_file" || {
   echo "Android CI must run qiwo-android-rime-core symbol parity verification" >&2
+  exit 1
+}
+
+for cache_name in \
+  'Cache qiwo-input-format-core JNI build' \
+  'Cache qiwo-sync-core JNI build'; do
+  grep -q "$cache_name" "$workflow_file" || {
+    echo "Android CI must cache native Rust JNI builds: $cache_name" >&2
+    exit 1
+  }
+done
+
+grep -q 'id: cache-input-format-core' "$workflow_file" || {
+  echo "Android CI must expose qiwo-input-format-core cache-hit state" >&2
+  exit 1
+}
+
+grep -q 'id: cache-sync-core' "$workflow_file" || {
+  echo "Android CI must expose qiwo-sync-core cache-hit state" >&2
+  exit 1
+}
+
+grep -q "if: steps.cache-input-format-core.outputs.cache-hit != 'true'" "$workflow_file" || {
+  echo "Android CI must skip qiwo-input-format-core JNI build on exact cache hit" >&2
+  exit 1
+}
+
+grep -q "if: steps.cache-sync-core.outputs.cache-hit != 'true'" "$workflow_file" || {
+  echo "Android CI must skip qiwo-sync-core JNI build on exact cache hit" >&2
+  exit 1
+}
+
+grep -q 'Copy qiwo-sync-core JNI library' "$workflow_file" || {
+  echo "Android CI must copy qiwo-sync-core JNI output after cache restore or build" >&2
   exit 1
 }
 
