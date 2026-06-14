@@ -106,6 +106,15 @@ class Launcher {
 patch:
   schema_list:
     - schema: rime_frost
+    - schema: rime_frost_t9
+    - schema: rime_frost_double_pinyin
+    - schema: rime_frost_double_pinyin_mspy
+    - schema: rime_frost_double_pinyin_sogou
+    - schema: rime_frost_double_pinyin_flypy
+    - schema: rime_frost_double_pinyin_abc
+    - schema: rime_frost_double_pinyin_ziguang
+    - schema: rime_frost_wubi86
+    - schema: rime_frost_moqi_single_xh
     - schema: pinyin
     - schema: t9_pinyin
     - schema: double_pinyin_natural

@@ -101,11 +101,11 @@ android {
 }
 
 static def qiwoVersionCode() {
-    return 1
+    return 2
 }
 
 static def qiwoVersionName() {
-    return "0.0.1"
+    return "0.0.2"
 }
 
 dependencies {

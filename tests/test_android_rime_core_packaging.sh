@@ -311,8 +311,13 @@ grep -q 'versionName qiwoVersionName()' "$app_gradle_file" || {
   exit 1
 }
 
-grep -q 'return "0.0.1"' "$app_gradle_file" || {
-  echo "Android app versionName must start from 0.0.1" >&2
+grep -q 'return 2' "$app_gradle_file" || {
+  echo "Android app versionCode must increment to 2 for the 0.0.2 build" >&2
+  exit 1
+}
+
+grep -q 'return "0.0.2"' "$app_gradle_file" || {
+  echo "Android app versionName must increment to 0.0.2" >&2
   exit 1
 }
 

@@ -30,6 +30,7 @@ for dir_name in "${required_dirs[@]}"; do
 done
 
 required_files=(
+  "default.yaml"
   "key_bindings.yaml"
   "punctuation.yaml"
   "symbols.yaml"
@@ -48,6 +49,18 @@ for file_name in "${required_files[@]}"; do
     exit 1
   }
 done
+
+for section in config_version schema_list punctuator recognizer key_binder; do
+  grep -q "^${section}:" "$asset_dir/default.yaml" || {
+    echo "Full frost default.yaml must include root section: $section" >&2
+    exit 1
+  }
+done
+
+grep -q '__include: default:/punctuator/full_shape' "$schema_file" || {
+  echo "Full frost schema must continue to inherit punctuator settings from default.yaml" >&2
+  exit 1
+}
 
 while IFS= read -r table_name; do
   [[ -n "$table_name" ]] || continue

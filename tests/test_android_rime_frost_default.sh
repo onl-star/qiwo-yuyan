@@ -33,8 +33,8 @@ grep -q 'SCHEMA_FROST = "rime_frost"' "$constant_file" || {
   exit 1
 }
 
-grep -q 'CURRENT_RIME_DICT_DATA_VERSION = "0.0.1"' "$constant_file" || {
-  echo "Full frost migration must use semantic Rime data version 0.0.1" >&2
+grep -q 'CURRENT_RIME_DICT_DATA_VERSION = "0.0.2"' "$constant_file" || {
+  echo "Full frost migration must use semantic Rime data version 0.0.2" >&2
   exit 1
 }
 
@@ -135,6 +135,13 @@ awk '
   echo "default.custom.yaml must expose canonical rime_frost before legacy pinyin" >&2
   exit 1
 }
+
+for schema in rime_frost_t9 rime_frost_double_pinyin rime_frost_double_pinyin_flypy rime_frost_wubi86 rime_frost_moqi_single_xh; do
+  grep -q -- "- schema: $schema" "$launcher_file" || {
+    echo "default.custom.yaml must expose full frost schema: $schema" >&2
+    exit 1
+  }
+done
 
 grep -q 'else -> CustomConstant.SCHEMA_FROST' "$switcher_file" || {
   echo "Full keyboard pinyin fallback must use canonical rime_frost by default" >&2
